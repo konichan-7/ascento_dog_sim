@@ -1,23 +1,20 @@
-"""运行整车 VMC 高度调节、三轴扰动和姿态曲线演示。"""
+"""运行整车 VMC 演示;--teleop 用数字键 1/2/3/4 驱动,并实时打印 IMU 姿态。"""
 
 from __future__ import annotations
 
 import argparse
-import os
 import time
 from math import pi, sin
-from pathlib import Path
 
 import numpy as np
 
 from ascento_dog.control import PulseTeleop, WheelSpeedGains, WheelVelocityController
 from ascento_dog.kinematics import DEFAULT_GEOMETRY
-from ascento_dog.plotting import save_attitude_response
 from ascento_dog.simulation import (
     apply_body_disturbance,
     create_default_vmc,
     load_quadruped_model,
-    read_vmc_state,
+    read_imu_attitude,
     set_quadruped_pose,
     step_drive,
     step_vmc,
@@ -36,15 +33,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--disturbance-duration", type=float, default=0.15, help="单次扰动持续时间，s"
     )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=Path("outputs/vmc_attitude_response"),
-        help="曲线文件前缀",
-    )
     parser.add_argument("--headless", action="store_true", help="不打开 MuJoCo Viewer")
-    parser.add_argument("--no-show", action="store_true", help="保存曲线但不打开绘图窗口")
-    parser.add_argument("--teleop", action="store_true", help="启用键盘 WASD 轮速遥杆")
+    parser.add_argument("--teleop", action="store_true", help="启用键盘遥杆(1前 2后 3左 4右)")
     parser.add_argument("--forward-speed", type=float, default=0.5, help="前进/后退脉冲幅值, m/s")
     parser.add_argument("--yaw-rate", type=float, default=1.0, help="转向脉冲幅值, rad/s")
     parser.add_argument("--decay", type=float, default=1.0, help="脉冲线性衰减时长, s")
@@ -71,55 +61,34 @@ def main() -> None:
     )
     teleop = PulseTeleop() if args.teleop else None
     simulation_start = float(data.time)
-    history: dict[str, list[float | bool]] = {
-        "time": [],
-        "roll": [],
-        "pitch": [],
-        "yaw": [],
-        "disturbance": [],
-    }
+    last_print = -10.0
 
     if args.headless:
         while data.time - simulation_start < args.duration:
-            _step_and_record(
-                model, data, controller, args, simulation_start, history,
-                wheel_controller, teleop,
+            last_print = _step(
+                model, data, controller, args, simulation_start,
+                teleop, wheel_controller, last_print,
             )
     else:
         _run_with_viewer(
-            model, data, controller, args, simulation_start, history,
-            wheel_controller, teleop,
+            model, data, controller, args, simulation_start,
+            teleop, wheel_controller, last_print,
         )
 
-    # macOS 上 mjpython 把脚本运行在后台线程,matplotlib 的 GUI 窗口需要主线程,
-    # 因此在该环境下强制只保存文件(Agg 后端),不再尝试打开绘图窗口。
-    show = not args.no_show and "MJPYTHON_BIN" not in os.environ
-    csv_path, pdf_path, png_path = save_attitude_response(
-        np.asarray(history["time"], dtype=float),
-        np.asarray(history["roll"], dtype=float),
-        np.asarray(history["pitch"], dtype=float),
-        np.asarray(history["yaw"], dtype=float),
-        np.asarray(history["disturbance"], dtype=bool),
-        output_prefix=args.output,
-        show=show,
-    )
-    print(f"姿态数据: {csv_path}")
-    print(f"矢量曲线: {pdf_path}")
-    print(f"预览曲线: {png_path}")
 
-
-def _run_with_viewer(model, data, controller, args, simulation_start, history, wheel_controller, teleop) -> None:
+def _run_with_viewer(
+    model, data, controller, args, simulation_start, teleop, wheel_controller, last_print
+) -> None:
     import mujoco.viewer
 
     key_callback = None
     if teleop is not None:
         def key_callback(keycode: int) -> None:
             key = chr(keycode) if 32 <= keycode < 127 else ""
-            if key and key in "WASD":
+            if key and key in "1234":
                 teleop.press(key, time.monotonic())
-                print(f"[teleop] key={key!r} keycode={keycode}", flush=True)
 
-    # teleop 模式下隐藏左右 UI 面板,避免文本输入框抢键盘焦点与 WASD 遥杆冲突。
+    # teleop 模式下隐藏左右 UI 面板,避免文本输入框抢键盘焦点与数字键遥杆冲突。
     show_ui = teleop is None
     with mujoco.viewer.launch_passive(
         model,
@@ -130,9 +99,9 @@ def _run_with_viewer(model, data, controller, args, simulation_start, history, w
     ) as viewer:
         while viewer.is_running() and data.time - simulation_start < args.duration:
             step_start = time.monotonic()
-            _step_and_record(
-                model, data, controller, args, simulation_start, history,
-                wheel_controller, teleop,
+            last_print = _step(
+                model, data, controller, args, simulation_start,
+                teleop, wheel_controller, last_print,
             )
             viewer.sync()
             remaining = float(model.opt.timestep) - (time.monotonic() - step_start)
@@ -140,18 +109,18 @@ def _run_with_viewer(model, data, controller, args, simulation_start, history, w
                 time.sleep(remaining)
 
 
-def _step_and_record(model, data, controller, args, simulation_start, history, wheel_controller, teleop) -> None:
+def _step(
+    model, data, controller, args, simulation_start, teleop, wheel_controller, last_print
+) -> float:
     elapsed = float(data.time) - simulation_start
     if teleop is not None:
-        desired_height = args.height
         command = teleop.command(
             time.monotonic(),
             forward_speed=args.forward_speed,
             yaw_rate=args.yaw_rate,
             decay=args.decay,
         )
-        step_drive(model, data, controller, wheel_controller, command, desired_height=desired_height)
-        active = False
+        step_drive(model, data, controller, wheel_controller, command, desired_height=args.height)
     else:
         desired_height = args.height + args.amplitude * sin(2.0 * pi * elapsed / args.period)
         phase = elapsed % args.disturbance_period
@@ -159,17 +128,26 @@ def _step_and_record(model, data, controller, args, simulation_start, history, w
         active = start <= phase < start + args.disturbance_duration
         magnitude = args.disturbance if active else 0.0
 
-        # 同时激励三轴;yaw 当前没有闭环控制,因此其残余偏角会保留在曲线上。
+        # 同时激励三轴;yaw 当前没有闭环控制,因此其残余偏角会保留在 IMU 读数上。
         torque_world = (magnitude, -(2.0 / 3.0) * magnitude, magnitude / 9.0)
         apply_body_disturbance(model, data, torque_world=torque_world)
         step_vmc(model, data, controller, desired_height=desired_height)
 
-    state = read_vmc_state(model, data)
-    history["time"].append(float(data.time) - simulation_start)
-    history["roll"].append(state.roll)
-    history["pitch"].append(state.pitch)
-    history["yaw"].append(state.yaw)
-    history["disturbance"].append(active)
+    return _print_attitude(model, data, last_print)
+
+
+def _print_attitude(model, data, last_print: float) -> float:
+    """约 5 Hz 节流打印 IMU yaw/pitch/roll(度),返回上次打印的仿真时刻。"""
+
+    if float(data.time) - last_print < 0.2:
+        return last_print
+    yaw, pitch, roll = read_imu_attitude(model, data)
+    print(
+        f"[imu] t={float(data.time):6.2f}s  yaw={np.rad2deg(yaw):7.1f}°  "
+        f"pitch={np.rad2deg(pitch):7.1f}°  roll={np.rad2deg(roll):7.1f}°",
+        flush=True,
+    )
+    return float(data.time)
 
 
 def _validate_args(args: argparse.Namespace) -> None:

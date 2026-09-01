@@ -50,9 +50,8 @@
 - `docs/`：供开发者阅读的推导、参数来源、假设和验证记录。关键模型约定不能只存在于代码中。
 - `mujoco/`：手工编写的 MJCF 文件、后续网格资源，以及 `mujoco/simulation/` 下的 MuJoCo 仿真适配代码。
 - `ascento_dog/kinematics/`：不依赖 MuJoCo 的解析几何与运动学。
-- `mujoco/simulation/`：MuJoCo 模型加载、状态映射和验证工具；`mujoco/` 不能作为 Python 包（会遮蔽同名绑定库），因此该包经 `ascento_dog/__init__.py` 的 `__path__` 扩展以 `ascento_dog.simulation` 导入。并含轮速读写（`read_wheel_velocities`、`apply_wheel_command`）与 `step_drive`。
+- `mujoco/simulation/`：MuJoCo 模型加载、状态映射和验证工具；`mujoco/` 不能作为 Python 包（会遮蔽同名绑定库），因此该包经 `ascento_dog/__init__.py` 的 `__path__` 扩展以 `ascento_dog.simulation` 导入。并含轮速读写（`read_wheel_velocities`、`apply_wheel_command`）、`step_drive` 与 IMU 姿态读取（`read_imu_attitude`）。
 - `ascento_dog/control/`：控制器；不得在控制器中重复实现运动学公式。
-- `ascento_dog/plotting.py`：VMC 姿态时序的 CSV、PDF 和 PNG 导出。
 - `ascento_dog/scripts/`：只保留单腿悬空运动学和整车 VMC 两个轻量入口。
 - `tests/`：确定性的单元测试和集成测试。
 
@@ -70,7 +69,7 @@
 
 ### 控制层
 
-`ascento_dog/control/` 与 MuJoCo 解耦。当前 VMC 使用解析雅可比转置将腿部虚拟力映射为髋力矩，并包含整车重力补偿、底盘高度 PID、roll/pitch 姿态 PD、有界四腿受力分配、积分抗饱和和髋力矩限幅。yaw 当前只记录和绘图，不进入闭环控制。`ascento_dog/control/wheel_speed.py` 提供与 MuJoCo 解耦的轮速 PI 与驱动运动学；`vmc --teleop` 提供键盘遥杆。
+`ascento_dog/control/` 与 MuJoCo 解耦。当前 VMC 使用解析雅可比转置将腿部虚拟力映射为髋力矩，并包含整车重力补偿、底盘高度 PID、roll/pitch 姿态 PD、有界四腿受力分配、积分抗饱和和髋力矩限幅。yaw 当前只由 IMU 传感器实时打印，不进入闭环控制。`ascento_dog/control/wheel_speed.py` 提供与 MuJoCo 解耦的轮速 PI 与驱动运动学；`vmc --teleop` 提供键盘遥杆（数字键 1/2/3/4：前进/后退/左转/右转）。
 
 ### 验证层
 

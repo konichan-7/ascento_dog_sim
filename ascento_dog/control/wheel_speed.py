@@ -137,7 +137,13 @@ class WheelVelocityController:
 
 
 class PulseTeleop:
-    """Latches W/A/S/D direction presses into linearly-decaying commands.
+    """Latches 1/2/3/4 direction presses into linearly-decaying commands.
+
+    Number keys avoid any overlap with MuJoCo viewer key handling.  Mapping is
+    1 = forward, 2 = backward, 3 = turn left, 4 = turn right.  Forward drives
+    the chassis -x direction: the default camera looks at the robot's rear
+    (+x front legs point away from the operator), so "forward" is the near
+    side and 1 drives toward the operator.
 
     The viewer's ``key_callback`` only delivers key-down events, so the teleop
     latches a direction for each axis and decays it linearly to zero over
@@ -158,13 +164,13 @@ class PulseTeleop:
         if not np.isfinite(t):
             raise ValueError("press time must be finite")
         with self._lock:
-            if key == "W":
-                self._vx_sign, self._vx_t0 = 1.0, t
-            elif key == "S":
+            if key == "1":  # forward (operator-visible forward, chassis -x)
                 self._vx_sign, self._vx_t0 = -1.0, t
-            elif key == "A":
+            elif key == "2":  # backward
+                self._vx_sign, self._vx_t0 = 1.0, t
+            elif key == "3":  # turn left
                 self._yaw_sign, self._yaw_t0 = 1.0, t
-            elif key == "D":
+            elif key == "4":  # turn right
                 self._yaw_sign, self._yaw_t0 = -1.0, t
 
     def command(

@@ -10,7 +10,7 @@
 4. 将目标总推力与姿态力矩分配为四条腿的竖直支撑力；
 5. 使用四连杆解析雅可比转置，将每条腿的虚拟力映射为髋关节力矩。
 
-当前框架只控制世界坐标系竖直力以及机体 roll/pitch，不控制水平速度、轮速或 yaw。仿真会记录 yaw、pitch、roll 三轴姿态曲线；其中 yaw 曲线用于观察耦合和漂移，不代表已经实现 yaw 闭环。控制器假设四个车轮均与地面接触；真实机器人后续还需要接触检测、状态估计、驱动器模型和安全状态机。
+当前框架只控制世界坐标系竖直力以及机体 roll/pitch，不控制水平速度、轮速或 yaw。仿真过程中由机体 IMU 传感器（`imu_quat` framequat）实时打印 yaw、pitch、roll，其中 yaw 用于观察耦合和漂移，不代表已经实现 yaw 闭环。控制器假设四个车轮均与地面接触；真实机器人后续还需要接触检测、状态估计、驱动器模型和安全状态机。
 
 ## 2. 坐标系、状态与符号
 
@@ -45,10 +45,9 @@ $$
 | 解析运动学 | `ascento_dog/kinematics/four_bar.py` | 正逆运动学、装配支路、解析轮心雅可比 |
 | VMC 控制器 | `ascento_dog/control/vmc.py` | 高度 PID、姿态 PD、受力分配、虚拟力到髋力矩 |
 | MuJoCo 适配 | `mujoco/simulation/mujoco_vmc.py` | 读取仿真状态、计算整车质心、写入力矩、施加扰动 |
-| 动力学模型 | `mujoco/quadruped.xml` | 重力、轮地接触、闭环腿、髋力矩执行器 |
-| 可视化入口 | `ascento_dog/scripts/vmc.py` | 目标高度、三轴周期扰动、实时 Viewer 和姿态记录 |
-| 曲线导出 | `ascento_dog/plotting.py` | yaw/pitch/roll 曲线、扰动区间、CSV/PDF/PNG 导出 |
-| 自动验证 | `tests/test_vmc.py`、`tests/test_mujoco_quadruped.py` | 数学映射、限幅、稳态与动力学回归测试 |
+| 动力学模型 | `mujoco/quadruped.xml` | 重力、轮地接触、闭环腿、髋力矩执行器、机体 IMU 传感器 |
+| 可视化入口 | `ascento_dog/scripts/vmc.py` | 目标高度、三轴周期扰动、实时 Viewer 与 IMU 姿态打印 |
+| 自动验证 | `tests/test_vmc.py`、`tests/test_mujoco_quadruped.py`、`tests/test_mujoco_drive.py` | 数学映射、限幅、稳态与动力学回归测试 |
 
 ### 3.2 信号流
 
@@ -101,7 +100,7 @@ flowchart LR
 10. 将 $f_i$ 映射为髋力矩 $\tau_i$ 并限幅；
 11. 将四个髋力矩写入 MuJoCo，车轮电机当前保持零输出；
 12. 执行一次 MuJoCo 动力学积分；
-13. 记录积分后的 yaw、pitch、roll 以及扰动开关，仿真结束后导出曲线。
+13. 由机体 IMU 传感器读取姿态，约 5 Hz 节流实时打印 yaw、pitch、roll。
 
 ### 3.4 接口定义
 
@@ -109,7 +108,7 @@ flowchart LR
 | --- | --- |
 | 控制输入 | 目标高度、当前底盘状态、四个髋角、整车质心、模型质量 |
 | 控制输出 | 四个目标竖直支撑力、四个髋关节力矩 |
-| 监测输出 | yaw/pitch/roll 时序、扰动标记、CSV/PDF/PNG 曲线 |
+| 监测输出 | IMU 实时 yaw/pitch/roll 打印（约 5 Hz） |
 | 更新频率 | 当前为 1 kHz |
 | 力饱和 | 每腿 $0\le f_i\le120\ \mathrm{N}$ |
 | 力矩饱和 | 每髋 $|\tau_i|\le40\ \mathrm{N\,m}$ |
@@ -430,20 +429,16 @@ uv run vmc --height 0.37 --amplitude 0.03 --period 8 \
   --disturbance 45 --disturbance-period 4 --disturbance-duration 0.15
 ```
 
-默认演示持续 12 s，每 4 s 施加一次持续 0.15 s 的三轴扰动力矩 $(45,-30,5)$ N·m。Viewer 关闭后会显示 yaw、pitch、roll 曲线，并在 `outputs/` 下保存：
+默认演示持续 12 s，每 4 s 施加一次持续 0.15 s 的三轴扰动力矩 $(45,-30,5)$ N·m。仿真过程中由机体 IMU 传感器实时打印 yaw、pitch、roll（约 5 Hz），不再生成仿真后曲线。
 
-- `vmc_attitude_response.csv`：原始姿态时序与扰动标记；
-- `vmc_attitude_response.pdf`：矢量曲线；
-- `vmc_attitude_response.png`：300 DPI 预览图。
-
-橙色阴影表示扰动作用区间。yaw 当前没有闭环控制，因此重复 yaw 扰动后可能存在残余偏角。macOS 会自动通过 `mjpython` 启动 Viewer。
+yaw 当前没有闭环控制，因此重复 yaw 扰动后可能存在残余偏角。macOS 会自动通过 `mjpython` 启动 Viewer。
 
 当前默认参数的 12 s 无界面复现实验得到：最大 roll 为 19.39°，最大 pitch 为 11.07°，最大 yaw 为 6.40°；仿真结束时 roll/pitch 已恢复到 `-0.0004° / +0.0211°`，yaw 保留约 6.40° 偏角。
 
-无界面快速生成曲线：
+无界面运行（仅打印 IMU 姿态）：
 
 ```bash
-uv run vmc --headless --no-show
+uv run vmc --headless
 ```
 
 全部数值验证由测试套件负责：
