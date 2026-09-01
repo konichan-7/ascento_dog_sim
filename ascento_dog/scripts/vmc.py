@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import time
 from math import pi, sin
 from pathlib import Path
@@ -90,6 +91,9 @@ def main() -> None:
             wheel_controller, teleop,
         )
 
+    # macOS 上 mjpython 把脚本运行在后台线程,matplotlib 的 GUI 窗口需要主线程,
+    # 因此在该环境下强制只保存文件(Agg 后端),不再尝试打开绘图窗口。
+    show = not args.no_show and "MJPYTHON_BIN" not in os.environ
     csv_path, pdf_path, png_path = save_attitude_response(
         np.asarray(history["time"], dtype=float),
         np.asarray(history["roll"], dtype=float),
@@ -97,7 +101,7 @@ def main() -> None:
         np.asarray(history["yaw"], dtype=float),
         np.asarray(history["disturbance"], dtype=bool),
         output_prefix=args.output,
-        show=not args.no_show,
+        show=show,
     )
     print(f"姿态数据: {csv_path}")
     print(f"矢量曲线: {pdf_path}")
@@ -114,7 +118,15 @@ def _run_with_viewer(model, data, controller, args, simulation_start, history, w
             if key and key in "WASD":
                 teleop.press(key, time.monotonic())
 
-    with mujoco.viewer.launch_passive(model, data, key_callback=key_callback) as viewer:
+    # teleop 模式下隐藏左右 UI 面板,避免文本输入框抢键盘焦点与 WASD 遥杆冲突。
+    show_ui = teleop is None
+    with mujoco.viewer.launch_passive(
+        model,
+        data,
+        key_callback=key_callback,
+        show_left_ui=show_ui,
+        show_right_ui=show_ui,
+    ) as viewer:
         while viewer.is_running() and data.time - simulation_start < args.duration:
             step_start = time.monotonic()
             _step_and_record(
