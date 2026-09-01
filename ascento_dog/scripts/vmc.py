@@ -111,7 +111,7 @@ def _run_with_viewer(model, data, controller, args, simulation_start, history, w
     if teleop is not None:
         def key_callback(keycode: int) -> None:
             key = chr(keycode) if 32 <= keycode < 127 else ""
-            if key in "WASD":
+            if key and key in "WASD":
                 teleop.press(key, time.monotonic())
 
     with mujoco.viewer.launch_passive(model, data, key_callback=key_callback) as viewer:
