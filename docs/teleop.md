@@ -39,9 +39,9 @@ UI 面板,避免文本输入框抢键盘焦点。
     uv run vmc --teleop
     uv run vmc --teleop --forward-speed 1.0 --yaw-rate 2.0 --decay 1.0
 
-`--teleop` 需要 viewer(桌面 OpenGL),不能与 `--headless` 同时使用。按数字键 1/2/3/4
-驱动(1前 2后 3左 4右),按 ESC 键结束程序并关闭 viewer。`--forward-speed`(默认 1.0 m/s)
-与 `--yaw-rate`(默认 2.0 rad/s)为脉冲幅值,可按需调大调小。
+`--teleop` 需要 viewer(桌面 OpenGL)。按数字键 1/2/3/4 驱动(1前 2后 3左 4右),按 ESC 键
+结束程序并关闭 viewer;程序无时间上限,运行到 ESC 或关闭窗口为止。`--forward-speed`
+(默认 1.0 m/s)与 `--yaw-rate`(默认 2.0 rad/s)为脉冲幅值,可按需调大调小。
 
 ## 复现验证
 

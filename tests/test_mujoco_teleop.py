@@ -3,7 +3,11 @@ import pytest
 
 mujoco = pytest.importorskip("mujoco")
 
-from ascento_dog.control import DriveCommand, WheelSpeedGains, WheelVelocityController  # noqa: E402
+from ascento_dog.control import (  # noqa: E402
+    TeleopCommand,
+    WheelSpeedGains,
+    WheelVelocityController,
+)
 from ascento_dog.kinematics import DEFAULT_GEOMETRY  # noqa: E402
 from ascento_dog.simulation import (  # noqa: E402
     create_default_vmc,
@@ -11,7 +15,7 @@ from ascento_dog.simulation import (  # noqa: E402
     read_imu_attitude,
     read_vmc_state,
     set_quadruped_pose,
-    step_drive,
+    step_teleop,
 )
 
 
@@ -28,10 +32,10 @@ def test_forward_command_translates_the_robot_forward() -> None:
         WheelSpeedGains(kp=0.5, ki=0.2, integral_limit=3.0, output_limit=10.0)
     )
     start_x = _chassis_x(model, data)
-    command = DriveCommand(v_x=0.5, omega_yaw=0.0)
+    command = TeleopCommand(v_x=0.5, omega_yaw=0.0)
 
     while data.time < 3.0:
-        step_drive(model, data, controller, wheel_controller, command, desired_height=0.37)
+        step_teleop(model, data, controller, wheel_controller, command, desired_height=0.37)
         assert np.all(np.isfinite(data.qpos))
         assert np.all(np.isfinite(data.qvel))
 
@@ -50,10 +54,10 @@ def test_yaw_command_turns_the_robot_left() -> None:
         WheelSpeedGains(kp=0.5, ki=0.2, integral_limit=3.0, output_limit=10.0)
     )
     start_yaw = read_vmc_state(model, data).yaw
-    command = DriveCommand(v_x=0.0, omega_yaw=1.0)
+    command = TeleopCommand(v_x=0.0, omega_yaw=1.0)
 
     while data.time < 1.5:
-        step_drive(model, data, controller, wheel_controller, command, desired_height=0.37)
+        step_teleop(model, data, controller, wheel_controller, command, desired_height=0.37)
         assert np.all(np.isfinite(data.qpos))
         assert np.all(np.isfinite(data.qvel))
 

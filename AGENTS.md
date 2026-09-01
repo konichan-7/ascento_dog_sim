@@ -50,7 +50,7 @@
 - `docs/`：供开发者阅读的推导、参数来源、假设和验证记录。关键模型约定不能只存在于代码中。
 - `mujoco/`：手工编写的 MJCF 文件、后续网格资源，以及 `mujoco/simulation/` 下的 MuJoCo 仿真适配代码。
 - `ascento_dog/kinematics/`：不依赖 MuJoCo 的解析几何与运动学。
-- `mujoco/simulation/`：MuJoCo 模型加载、状态映射和验证工具；`mujoco/` 不能作为 Python 包（会遮蔽同名绑定库），因此该包经 `ascento_dog/__init__.py` 的 `__path__` 扩展以 `ascento_dog.simulation` 导入。并含轮速读写（`read_wheel_velocities`、`apply_wheel_command`）、`step_drive` 与 IMU 姿态读取（`read_imu_attitude`）。
+- `mujoco/simulation/`：MuJoCo 模型加载、状态映射和验证工具；`mujoco/` 不能作为 Python 包（会遮蔽同名绑定库），因此该包经 `ascento_dog/__init__.py` 的 `__path__` 扩展以 `ascento_dog.simulation` 导入。并含轮速读写（`read_wheel_velocities`、`apply_wheel_command`）、`step_teleop` 与 IMU 姿态读取（`read_imu_attitude`）。
 - `ascento_dog/control/`：控制器；不得在控制器中重复实现运动学公式。
 - `ascento_dog/scripts/`：只保留单腿悬空运动学和整车 VMC 两个轻量入口。
 - `tests/`：确定性的单元测试和集成测试。

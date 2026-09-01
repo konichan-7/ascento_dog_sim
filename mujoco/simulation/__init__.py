@@ -20,7 +20,7 @@ from ascento_dog.simulation.mujoco_vmc import (
     read_imu_attitude,
     read_vmc_state,
     read_wheel_velocities,
-    step_drive,
+    step_teleop,
     step_vmc,
     yaw_pitch_roll_from_rotation,
 )
@@ -41,7 +41,7 @@ __all__ = [
     "read_imu_attitude",
     "read_vmc_state",
     "read_wheel_velocities",
-    "step_drive",
+    "step_teleop",
     "step_vmc",
     "yaw_pitch_roll_from_rotation",
 ]

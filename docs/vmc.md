@@ -34,7 +34,7 @@ h,\ \dot h,\ \psi_B,\ \phi,\ \theta,\ \omega_x,\ \omega_y,
 \right].
 $$
 
-其中 $h$ 是底盘坐标原点的世界系高度，$\psi_B$ 是机体 yaw，$q_i$ 是每条腿的绝对解析髋角，$r_{COM}^B$ 是整车质心在机体系中的位置。yaw 会被记录和绘图，但当前不进入姿态反馈力矩。
+其中 $h$ 是底盘坐标原点的世界系高度，$\psi_B$ 是机体 yaw，$q_i$ 是每条腿的绝对解析髋角，$r_{COM}^B$ 是整车质心在机体系中的位置。yaw 当前不进入姿态反馈力矩。
 
 ## 3. 完整控制框架
 
@@ -47,7 +47,7 @@ $$
 | MuJoCo 适配 | `mujoco/simulation/mujoco_vmc.py` | 读取仿真状态、计算整车质心、写入力矩、施加扰动 |
 | 动力学模型 | `mujoco/quadruped.xml` | 重力、轮地接触、闭环腿、髋力矩执行器、机体 IMU 传感器 |
 | 可视化入口 | `ascento_dog/scripts/vmc.py` | 目标高度、三轴周期扰动、实时 Viewer、`--teleop` 数字键遥杆 |
-| 自动验证 | `tests/test_vmc.py`、`tests/test_mujoco_quadruped.py`、`tests/test_mujoco_drive.py` | 数学映射、限幅、稳态与动力学回归测试 |
+| 自动验证 | `tests/test_vmc.py`、`tests/test_mujoco_quadruped.py`、`tests/test_mujoco_teleop.py` | 数学映射、限幅、稳态与动力学回归测试 |
 
 ### 3.2 信号流
 
@@ -429,17 +429,11 @@ uv run vmc --height 0.37 --amplitude 0.03 --period 8 \
   --disturbance 45 --disturbance-period 4 --disturbance-duration 0.15
 ```
 
-默认演示持续 12 s，每 4 s 施加一次持续 0.15 s 的三轴扰动力矩 $(45,-30,5)$ N·m。不再生成仿真后曲线。
+演示运行到关闭 viewer 为止（无时间上限），每 4 s 施加一次持续 0.15 s 的三轴扰动力矩 $(45,-30,5)$ N·m。
 
 yaw 当前没有闭环控制，因此重复 yaw 扰动后可能存在残余偏角。macOS 会自动通过 `mjpython` 启动 Viewer。
 
-当前默认参数的 12 s 无界面复现实验得到：最大 roll 为 19.39°，最大 pitch 为 11.07°，最大 yaw 为 6.40°；仿真结束时 roll/pitch 已恢复到 `-0.0004° / +0.0211°`，yaw 保留约 6.40° 偏角。
-
-无界面运行：
-
-```bash
-uv run vmc --headless
-```
+`--headless` 模式已移除；下列 12 s 无界面复现数据为历史记录：最大 roll 为 19.39°，最大 pitch 为 11.07°，最大 yaw 为 6.40°；仿真结束时 roll/pitch 已恢复到 `-0.0004° / +0.0211°`，yaw 保留约 6.40° 偏角。
 
 全部数值验证由测试套件负责：
 

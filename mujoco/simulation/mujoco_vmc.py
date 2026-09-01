@@ -9,10 +9,10 @@ import numpy as np
 
 from ascento_dog.control import (
     AttitudeGains,
-    DriveCommand,
     HeightPID,
     PIDGains,
     QuadrupedVMC,
+    TeleopCommand,
     VMCCommand,
     VMCState,
     WheelVelocityController,
@@ -201,16 +201,16 @@ def apply_wheel_command(model, data, wheel_torques: dict[str, float]) -> None:
         data.ctrl[actuator_id] = torque
 
 
-def step_drive(
+def step_teleop(
     model,
     data,
     controller: QuadrupedVMC,
     wheel_controller: WheelVelocityController,
-    command: DriveCommand,
+    command: TeleopCommand,
     *,
     desired_height: float,
 ) -> VMCCommand:
-    """Compute and apply one VMC + wheel-drive command, then step MuJoCo."""
+    """Compute and apply one VMC + teleop command, then step MuJoCo."""
 
     import mujoco
 

@@ -1,9 +1,9 @@
-"""Wheel-speed drive control for the four-wheeled robot, independent of MuJoCo.
+"""Wheel-speed teleop control for the four-wheeled robot, independent of MuJoCo.
 
 The module provides four independent pieces:
 
-- ``DriveCommand``: a two-degree-of-freedom chassis-frame drive command.
-- ``wheel_speed_targets``: maps a drive command to per-wheel angular speeds.
+- ``TeleopCommand``: a two-degree-of-freedom chassis-frame teleop command.
+- ``wheel_speed_targets``: maps a teleop command to per-wheel angular speeds.
 - ``WheelVelocityController``: a per-wheel PI speed controller with anti-windup.
 - ``PulseTeleop``: latches W/A/S/D presses into linearly-decaying commands.
 
@@ -20,8 +20,8 @@ import numpy as np
 
 
 @dataclass(frozen=True)
-class DriveCommand:
-    """Two-degree-of-freedom drive command in the chassis frame.
+class TeleopCommand:
+    """Two-degree-of-freedom teleop command in the chassis frame.
 
     ``v_x`` is forward speed (m/s) along chassis +x; ``omega_yaw`` is the
     yaw rate (rad/s) about chassis +z, positive counterclockwise from above.
@@ -32,11 +32,11 @@ class DriveCommand:
 
 
 def wheel_speed_targets(
-    command: DriveCommand,
+    command: TeleopCommand,
     wheel_radius: float,
     mounts_y: Mapping[str, float],
 ) -> dict[str, float]:
-    """Map a drive command to per-wheel target angular velocities (rad/s).
+    """Map a teleop command to per-wheel target angular velocities (rad/s).
 
     Each wheel rolls only along the chassis +x axis.  The wheel-centre linear
     speed is ``v_x - omega_yaw * y`` (translation plus yaw lever arm).  In this
@@ -48,7 +48,7 @@ def wheel_speed_targets(
     if not np.isfinite(radius) or radius <= 0.0:
         raise ValueError("wheel_radius must be finite and positive")
     if not np.isfinite(command.v_x) or not np.isfinite(command.omega_yaw):
-        raise ValueError("drive command must be finite")
+        raise ValueError("teleop command must be finite")
     if not mounts_y:
         raise ValueError("mounts_y must not be empty")
     targets: dict[str, float] = {}
@@ -178,8 +178,8 @@ class PulseTeleop:
         forward_speed: float,
         yaw_rate: float,
         decay: float,
-    ) -> DriveCommand:
-        """Return the drive command at wall time ``t`` after linear decay."""
+    ) -> TeleopCommand:
+        """Return the teleop command at wall time ``t`` after linear decay."""
 
         values = (forward_speed, yaw_rate, decay, t)
         if any(not np.isfinite(value) for value in values):
@@ -189,7 +189,7 @@ class PulseTeleop:
         with self._lock:
             v_x = self._axis_value(self._vx_sign, self._vx_t0, t, forward_speed, decay)
             omega_yaw = self._axis_value(self._yaw_sign, self._yaw_t0, t, yaw_rate, decay)
-        return DriveCommand(v_x=v_x, omega_yaw=omega_yaw)
+        return TeleopCommand(v_x=v_x, omega_yaw=omega_yaw)
 
     @staticmethod
     def _axis_value(
