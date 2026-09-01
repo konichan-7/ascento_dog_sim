@@ -23,6 +23,7 @@ dev = [
 [project.scripts]
 leg-kinematics = "ascento_dog.scripts.leg_kinematics:main"
 vmc = "ascento_dog.scripts.vmc:main"
+cross-step = "ascento_dog.scripts.cross_step:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["ascento_dog"]

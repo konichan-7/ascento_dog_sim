@@ -203,6 +203,8 @@ def allocate_vertical_forces(
     *,
     minimum_force: float | NDArray[np.float64] = 0.0,
     maximum_force: float | NDArray[np.float64] = inf,
+    roll_axis: bool = True,
+    pitch_axis: bool = True,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """Allocate bounded vertical wheel forces using a small active-set search.
 
@@ -210,12 +212,22 @@ def allocate_vertical_forces(
     returned tuple contains the force vector and achieved wrench.  If force
     limits make the request infeasible, the solution minimizes a normalized
     wrench residual while respecting every bound.
+
+    ``roll_axis``/``pitch_axis`` drop the corresponding moment rows when the
+    contact set cannot produce that moment (e.g. a single-axle support
+    cannot make a nose-up pitch moment); otherwise the residual cost would
+    bias the allocator toward unloading the support.
     """
 
     matrix = vertical_force_allocation_matrix(contact_points_body, body_to_world)
     target = np.asarray(desired_wrench, dtype=float)
     if target.shape != (3,) or not np.all(np.isfinite(target)):
         raise ValueError("desired_wrench must contain three finite values")
+    keep = np.array([True, roll_axis, pitch_axis], dtype=bool)
+    if not np.any(keep):
+        raise ValueError("at least one wrench axis must be kept")
+    matrix = matrix[keep]
+    target = target[keep]
     count = matrix.shape[1]
     lower = np.broadcast_to(np.asarray(minimum_force, dtype=float), (count,)).copy()
     upper = np.broadcast_to(np.asarray(maximum_force, dtype=float), (count,)).copy()
@@ -228,6 +240,7 @@ def allocate_vertical_forces(
     reference = np.clip(reference, lower, upper)
     lever_scale = max(float(np.max(np.linalg.norm(contact_points_body[:, :2], axis=1))), 1e-6)
     weights = np.diag([1.0, 1.0 / lever_scale, 1.0 / lever_scale])
+    weights = weights[np.ix_(keep, keep)]
 
     best_force: NDArray[np.float64] | None = None
     best_cost = inf

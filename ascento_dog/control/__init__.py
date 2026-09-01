@@ -1,5 +1,12 @@
 """Control algorithms independent of the MuJoCo simulation adapter."""
 
+from ascento_dog.control.step_crossing import (
+    CrossingCommand,
+    CrossingParameters,
+    CrossingPhase,
+    StepCrossingController,
+    WheelObservation,
+)
 from ascento_dog.control.vmc import (
     AttitudeGains,
     HeightPID,
@@ -29,6 +36,11 @@ __all__ = [
     "VMCState",
     "allocate_vertical_forces",
     "vertical_force_allocation_matrix",
+    "CrossingCommand",
+    "CrossingParameters",
+    "CrossingPhase",
+    "StepCrossingController",
+    "WheelObservation",
     "TeleopCommand",
     "PulseTeleop",
     "WheelSpeedGains",

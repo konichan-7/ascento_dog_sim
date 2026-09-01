@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from math import asin, atan2
 
 import numpy as np
+from numpy.typing import NDArray
 
 from ascento_dog.control import (
     AttitudeGains,
@@ -244,3 +245,53 @@ def read_imu_attitude(model, data) -> tuple[float, float, float]:
     rotation = np.empty(9)
     mujoco.mju_quat2Mat(rotation, quat)
     return yaw_pitch_roll_from_rotation(rotation.reshape(3, 3))
+
+
+def read_wheel_centers(model, data) -> dict[str, np.ndarray]:
+    """返回每个轮心的世界系位置 (x, y, z)，单位 m。"""
+
+    import mujoco
+
+    centers: dict[str, NDArray[np.float64]] = {}
+    for name in LEG_MOUNTS:
+        body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, f"{name}_wheel")
+        if body_id < 0:
+            raise KeyError(f"wheel body for {name!r} not found")
+        centers[name] = np.array(data.xpos[body_id], dtype=float)
+    return centers
+
+
+def read_hip_rates(model, data) -> dict[str, float]:
+    """返回四个髋关节角速度，单位 rad/s。"""
+
+    import mujoco
+
+    rates: dict[str, float] = {}
+    for name in LEG_MOUNTS:
+        joint_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, f"{name}_hip_drive")
+        if joint_id < 0:
+            raise KeyError(f"hip joint for {name!r} not found")
+        rates[name] = float(data.qvel[model.jnt_dofadr[joint_id]])
+    return rates
+
+
+def apply_crossing_command(model, data, command) -> None:
+    """写入跨越台阶指令的髋关节与车轮力矩。
+
+    ``command`` 为 :class:`~ascento_dog.control.step_crossing.CrossingCommand`，
+    髋与轮力矩单位均为 N·m，其余执行器保持为零。
+    """
+
+    import mujoco
+
+    data.ctrl[:] = 0.0
+    for name, torque in command.hip_torques.items():
+        actuator_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, f"{name}_hip_motor")
+        if actuator_id < 0:
+            raise KeyError(f"hip actuator for {name!r} not found")
+        data.ctrl[actuator_id] = torque
+    for name, torque in command.wheel_torques.items():
+        actuator_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, f"{name}_wheel_motor")
+        if actuator_id < 0:
+            raise KeyError(f"wheel actuator for {name!r} not found")
+        data.ctrl[actuator_id] = torque

@@ -52,7 +52,7 @@
 - `ascento_dog/kinematics/`：不依赖 MuJoCo 的解析几何与运动学。
 - `mujoco/simulation/`：MuJoCo 模型加载、状态映射和验证工具；`mujoco/` 不能作为 Python 包（会遮蔽同名绑定库），因此该包经 `ascento_dog/__init__.py` 的 `__path__` 扩展以 `ascento_dog.simulation` 导入。并含轮速读写（`read_wheel_velocities`、`apply_wheel_command`）、`step_teleop` 与 IMU 姿态读取（`read_imu_attitude`）。
 - `ascento_dog/control/`：控制器；不得在控制器中重复实现运动学公式。
-- `ascento_dog/scripts/`：只保留单腿悬空运动学和整车 VMC 两个轻量入口。
+- `ascento_dog/scripts/`：只保留单腿悬空运动学、整车 VMC 和跨台阶验证三个轻量入口。
 - `tests/`：确定性的单元测试和集成测试。
 
 ## 功能分层与当前状态
@@ -63,13 +63,13 @@
 
 ### MuJoCo 仿真层
 
-单腿模型保持零重力并关闭腿部接触，用于将闭环连杆几何与整车动力学隔离。整车模型在自由长方体机身上同向安装四条已验证的闭环腿，每个轮子具有独立转动关节；模型启用重力和轮地接触，四个髋关节由力矩执行器驱动。
+单腿模型保持零重力并关闭腿部接触，用于将闭环连杆几何与整车动力学隔离。整车模型在自由长方体机身上同向安装四条已验证的闭环腿（屈膝朝向机体后方），每个轮子具有独立转动关节；模型启用重力和轮地接触，四个髋关节由力矩执行器驱动。
 
-`mujoco/simulation/`（以 `ascento_dog.simulation` 导入）负责解析状态与 MuJoCo 状态之间的映射、具名验证点、整车质心读取、VMC 指令写入和扰动注入。解析运动学始终作为 MuJoCo 点位的外部真值。
+`mujoco/simulation/`（以 `ascento_dog.simulation` 导入）负责解析状态与 MuJoCo 状态之间的映射、具名验证点、整车质心读取、VMC 指令写入和扰动注入。`mujoco/quadruped_step.xml` 为跨台阶场景（150 mm 平台，摩擦 1.5 为示意值），由 `ascento_dog.scripts.cross_step` 使用。解析运动学始终作为 MuJoCo 点位的外部真值。
 
 ### 控制层
 
-`ascento_dog/control/` 与 MuJoCo 解耦。当前 VMC 使用解析雅可比转置将腿部虚拟力映射为髋力矩，并包含整车重力补偿、底盘高度 PID、roll/pitch 姿态 PD、有界四腿受力分配、积分抗饱和和髋力矩限幅。yaw 当前不进入闭环控制。`ascento_dog/control/wheel_speed.py` 提供与 MuJoCo 解耦的轮速 PI 与驱动运动学；`vmc --teleop` 提供键盘遥杆（数字键 1/2/3/4：前进/后退/左转/右转，ESC 退出）。
+`ascento_dog/control/` 与 MuJoCo 解耦。当前 VMC 使用解析雅可比转置将腿部虚拟力映射为髋力矩，并包含整车重力补偿、底盘高度 PID、roll/pitch 姿态 PD、有界四腿受力分配、积分抗饱和和髋力矩限幅。yaw 当前不进入闭环控制。`ascento_dog/control/wheel_speed.py` 提供与 MuJoCo 解耦的轮速 PI 与驱动运动学；`ascento_dog/control/step_crossing.py` 提供跨台阶阶段状态机（前爬齿轮效应、后爬前腿位置锁定+后腿提升调度）；`vmc --teleop` 提供键盘遥杆（数字键 1/2/3/4：前进/后退/左转/右转，ESC 退出），`cross-step` 提供无界面/查看器两种跨台阶验证入口。
 
 ### 验证层
 

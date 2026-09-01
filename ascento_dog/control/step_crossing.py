@@ -1,0 +1,544 @@
+"""Phased step-crossing control for the four-wheeled, four-legged robot.
+
+The controller drives the robot forward onto a raised platform while
+keeping the chassis level (pitch target 0) throughout the whole maneuver.
+The legs do the climbing: during both climb phases the climbing axle's
+legs are joint-space position-servoed on a scheduled wheel lift height,
+dragging the wheels up the riser face with the aid of wheel-against-riser
+rolling friction, while the supporting axle's legs are position-frozen so
+the chassis pose (height and pitch) is pinned by geometry.  Stance phases
+use vertical-force allocation mapped to hip torques by the analytical
+Jacobian transpose.
+
+Phases (world +x is the travel direction, the riser faces -x):
+
+1. ``APPROACH``    all legs stance; level body at ``stance_height``
+   (= step top + wheel radius + shortest-leg drop, i.e. the nominal
+   q=-40 deg stance on flat ground); drive toward the riser.
+2. ``FRONT_CLIMB`` front wheels press the riser; the front legs retract
+   toward their shortest length on a lift schedule, dragging the wheels up
+   the face while they roll onto the platform edge; the rear legs are
+   position-frozen and carry the chassis.  Body stays level.
+3. ``STRADDLE``    front wheels on the platform, front legs shortest,
+   rear legs stance; body level; drive until the rear wheels touch the
+   riser.
+4. ``REAR_CLIMB``  front legs hold shortest (position), rear legs retract
+   on the lift schedule, dragging the rear wheels up the face; the front
+   wheels drive/press on the platform.  Body stays level.
+5. ``EXTEND``      all four wheels on the platform; chassis height ramps
+   from the low stance to the nominal stance above the platform (all four
+   legs extend synchronously).
+6. ``DONE``        hold pose on the platform.
+
+Sign conventions (identical to :mod:`ascento_dog.control.vmc`):
+
+- Pitch is the body +y (left) axis Euler angle; positive pitch tips the
+  nose DOWN.  The crossing keeps the body level (pitch target 0).
+- ``height`` is the chassis-center world z in meters; leg angles ``q`` are
+  absolute analytical hip angles in radians; forces are newtons and hip
+  torques N*m.  The ground under the approach side is at ``z = 0``.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from enum import Enum
+from math import inf
+
+import numpy as np
+
+from ascento_dog.control.vmc import (
+    HeightPID,
+    LegMount,
+    PIDGains,
+    VMCState,
+    allocate_vertical_forces,
+)
+from ascento_dog.control.wheel_speed import (
+    TeleopCommand,
+    WheelSpeedGains,
+    WheelVelocityController,
+    wheel_speed_targets,
+)
+from ascento_dog.kinematics import DEFAULT_GEOMETRY, FourBarGeometry
+
+FRONT_LEGS = ("front_left", "front_right")
+REAR_LEGS = ("rear_left", "rear_right")
+ALL_LEGS = FRONT_LEGS + REAR_LEGS
+
+
+class CrossingPhase(Enum):
+    """Sequential phases of one step-crossing attempt."""
+
+    APPROACH = "approach"
+    FRONT_CLIMB = "front_climb"
+    STRADDLE = "straddle"
+    REAR_CLIMB = "rear_climb"
+    EXTEND = "extend"
+    DONE = "done"
+
+
+@dataclass(frozen=True)
+class WheelObservation:
+    """World-frame wheel-center observation in meters.
+
+    ``x`` is the travel-direction coordinate of the wheel center and ``z``
+    its height, both in the world frame.
+    """
+
+    x: float
+    z: float
+
+
+@dataclass(frozen=True)
+class CrossingParameters:
+    """Step geometry, pose targets, gains, and timeouts (SI units).
+
+    Heights are chassis-center world z targets.  ``stance_height`` is the
+    level-body height during the crossing and should equal
+    ``step_height + wheel_radius + shortest_leg_drop`` (the front legs can
+    then reach the platform top exactly at their shortest length, keeping
+    the chassis level); ``extend_height`` is the nominal stance height on
+    top of the platform.  All gains remain illustrative until actuator
+    identification.
+    """
+
+    step_height: float = 0.15
+    step_face_x: float = 0.9
+    wheel_radius: float = 0.065
+    wheelbase: float = 0.48
+    contact_margin: float = 0.005
+    edge_clearance: float = 0.04
+    stance_height: float = 0.326206
+    extend_height: float = 0.5193091272
+    extend_duration: float = 1.5
+    extend_settle: float = 0.02
+    forward_speed: float = 0.25
+    front_press_offset: float = 0.15
+    rear_press_offset: float = 0.15
+    front_climbing_cap: float = 70.0
+    lift_rate: float = 0.08
+    air_kp: float = 300.0
+    air_kd: float = 12.0
+    extend_speed: float = 0.15
+    height_kp: float = 1000.0
+    height_ki: float = 200.0
+    height_kd: float = 260.0
+    height_integral_limit: float = 0.15
+    height_thrust_limit: float = 180.0
+    roll_kp: float = 180.0
+    roll_kd: float = 28.0
+    pitch_kp: float = 140.0
+    pitch_kd: float = 60.0
+    minimum_leg_force: float = 25.0
+    maximum_leg_force: float = 120.0
+    maximum_hip_torque: float = 40.0
+    wheel_kp: float = 0.8
+    wheel_ki: float = 0.3
+    wheel_integral_limit: float = 3.0
+    wheel_output_limit: float = 20.0
+    phase_timeouts: Mapping[CrossingPhase, float] = field(
+        default_factory=lambda: {
+            CrossingPhase.APPROACH: 20.0,
+            CrossingPhase.FRONT_CLIMB: 15.0,
+            CrossingPhase.STRADDLE: 20.0,
+            CrossingPhase.REAR_CLIMB: 15.0,
+            CrossingPhase.EXTEND: 8.0,
+            CrossingPhase.DONE: inf,
+        }
+    )
+
+    def __post_init__(self) -> None:
+        if self.step_height <= 0.0 or self.wheel_radius <= 0.0:
+            raise ValueError("step height and wheel radius must be positive")
+        if self.wheelbase <= 0.0:
+            raise ValueError("wheelbase must be positive")
+        if self.stance_height <= 0.0 or self.extend_height <= 0.0:
+            raise ValueError("stance/extend heights must be positive")
+        if self.front_press_offset < 0.0 or self.rear_press_offset < 0.0:
+            raise ValueError("press offsets must be nonnegative")
+        if self.front_climbing_cap <= 0.0:
+            raise ValueError("front_climbing_cap must be positive")
+        if self.lift_rate <= 0.0:
+            raise ValueError("lift_rate must be positive")
+        if self.air_kp <= 0.0 or self.air_kd < 0.0:
+            raise ValueError("air-leg gains must be positive kp and nonnegative kd")
+        if self.forward_speed < 0.0 or self.extend_speed < 0.0:
+            raise ValueError("speeds must be nonnegative")
+        if self.extend_duration <= 0.0 or self.extend_settle <= 0.0:
+            raise ValueError("extend duration and settle must be positive")
+
+
+@dataclass(frozen=True)
+class CrossingCommand:
+    """One control-step output, forces in N and torques in N*m."""
+
+    phase: CrossingPhase
+    hip_torques: dict[str, float]
+    wheel_torques: dict[str, float]
+    leg_forces: dict[str, float]
+    desired_height: float
+    desired_pitch: float
+    done: bool
+    failed: bool
+    failure_reason: str = ""
+
+
+class StepCrossingController:
+    """Hybrid force/position step crossing for four one-DoF legs.
+
+    The controller is independent of MuJoCo.  It consumes the same
+    :class:`~ascento_dog.control.vmc.VMCState` as the VMC plus per-wheel
+    world observations and hip joint rates, and produces hip and wheel
+    torques for one simulation step.
+
+    Stance support uses vertical-force allocation mapped to hip torques by
+    the analytical Jacobian transpose.  The two climb phases switch all
+    four legs to joint-space position control (the climbing axle follows a
+    scheduled wheel lift height, the supporting axle is frozen), which pins
+    the chassis pose geometrically and drags the wheels up the riser face.
+    """
+
+    def __init__(
+        self,
+        *,
+        mass: float,
+        mounts: Mapping[str, LegMount],
+        parameters: CrossingParameters,
+        geometry: FourBarGeometry = DEFAULT_GEOMETRY,
+        gravity: float = 9.81,
+    ) -> None:
+        if not np.isfinite(mass) or mass <= 0.0:
+            raise ValueError("mass must be finite and positive")
+        if set(mounts) != set(ALL_LEGS):
+            raise ValueError("mounts must contain exactly the four legs")
+        self.mass = float(mass)
+        self.mounts = dict(mounts)
+        self.parameters = parameters
+        self.geometry = geometry
+        self.gravity = float(gravity)
+        self.height_pid = HeightPID(
+            PIDGains(
+                parameters.height_kp,
+                parameters.height_ki,
+                parameters.height_kd,
+                integral_limit=parameters.height_integral_limit,
+                output_limit=parameters.height_thrust_limit,
+            )
+        )
+        self.wheel_controller = WheelVelocityController(
+            WheelSpeedGains(
+                parameters.wheel_kp,
+                parameters.wheel_ki,
+                integral_limit=parameters.wheel_integral_limit,
+                output_limit=parameters.wheel_output_limit,
+            )
+        )
+        self.phase = CrossingPhase.APPROACH
+        self.phase_time = 0.0
+        self.failed = False
+        self.failure_reason = ""
+        self._extend_start_height = parameters.extend_height
+        self._rear_lift_target = 0.0
+
+    def reset(self) -> None:
+        """Reset the state machine and all controller memory."""
+
+        self.height_pid.reset()
+        self.wheel_controller.reset()
+        self.phase = CrossingPhase.APPROACH
+        self.phase_time = 0.0
+        self.failed = False
+        self.failure_reason = ""
+
+    def q_for_wheel_drop(self, drop: float) -> float:
+        """Hip target placing the wheel ``drop`` m below its mount.
+
+        Clamps to the working interval when the requested drop lies outside
+        the one-DoF linkage path.
+        """
+
+        drop_min = -self.geometry.forward(self.geometry.q_max, check_limits=False).e[1]
+        drop_max = -self.geometry.forward(self.geometry.q_min, check_limits=False).e[1]
+        if drop <= drop_min:
+            return self.geometry.q_max
+        if drop >= drop_max:
+            return self.geometry.q_min
+        return self.geometry.inverse_height(-drop)
+
+    def update(
+        self,
+        state: VMCState,
+        wheels: Mapping[str, WheelObservation],
+        *,
+        wheel_velocities: Mapping[str, float],
+        leg_rates: Mapping[str, float],
+        dt: float,
+    ) -> CrossingCommand:
+        """Advance the state machine one step and return the torques to apply.
+
+        ``wheels`` holds one :class:`WheelObservation` per leg,
+        ``wheel_velocities`` the spin rates in rad/s, and ``leg_rates`` the
+        hip joint rates in rad/s.
+        """
+
+        if set(wheels) != set(ALL_LEGS):
+            raise ValueError("wheels must contain exactly the four legs")
+        if set(leg_rates) != set(ALL_LEGS):
+            raise ValueError("leg_rates must contain exactly the four legs")
+        if not np.isfinite(dt) or dt <= 0.0:
+            raise ValueError("dt must be finite and positive")
+
+        self.phase_time += dt
+        self._advance_phase(state, wheels)
+        if self.phase == CrossingPhase.REAR_CLIMB:
+            self._advance_lift_target("_rear_lift_target", dt)
+            return self._rear_climb_command(state, wheels, wheel_velocities, leg_rates, dt)
+
+        height_target, pitch_target, speed = self._phase_targets(state, wheels)
+
+        rotation = np.asarray(state.body_to_world, dtype=float)
+        gravity_force = self.mass * self.gravity
+        height_thrust = self.height_pid.update(
+            height_target, state.height, state.vertical_velocity, dt
+        )
+        desired_total = max(0.0, gravity_force + height_thrust)
+
+        roll_torque = -self.parameters.roll_kp * state.roll - self.parameters.roll_kd * float(
+            state.angular_velocity_body[0]
+        )
+        pitch_torque = -self.parameters.pitch_kp * (
+            state.pitch - pitch_target
+        ) - self.parameters.pitch_kd * float(state.angular_velocity_body[1])
+        desired_wrench = np.array([desired_total, roll_torque, pitch_torque])
+
+        center_of_mass = np.asarray(state.center_of_mass_body, dtype=float)
+        points = []
+        lower_bounds = []
+        upper_bounds = []
+        for name in ALL_LEGS:
+            q = self._clamped_angle(float(state.leg_angles[name]))
+            pose = self.geometry.forward(q, check_limits=False)
+            wheel_body = np.array([pose.e[0], 0.0, pose.e[1]])
+            mount = self.mounts[name]
+            points.append(
+                mount.position_body + mount.rotation_body_from_leg @ wheel_body - center_of_mass
+            )
+            lower_bounds.append(self.parameters.minimum_leg_force)
+            upper_bounds.append(self._leg_force_cap(name))
+        forces, _achieved = allocate_vertical_forces(
+            desired_wrench,
+            np.asarray(points),
+            rotation,
+            minimum_force=np.asarray(lower_bounds),
+            maximum_force=np.asarray(upper_bounds),
+        )
+
+        hip_torques: dict[str, float] = {}
+        world_up = np.array([0.0, 0.0, 1.0])
+        for index, name in enumerate(ALL_LEGS):
+            q = self._clamped_angle(float(state.leg_angles[name]))
+            jacobian_xz = self.geometry.wheel_jacobian(q)
+            jacobian_leg = np.array([jacobian_xz[0], 0.0, jacobian_xz[1]])
+            jacobian_world = rotation @ self.mounts[name].rotation_body_from_leg @ jacobian_leg
+            torque = -float(forces[index]) * float(world_up @ jacobian_world)
+            hip_torques[name] = float(
+                np.clip(
+                    torque,
+                    -self.parameters.maximum_hip_torque,
+                    self.parameters.maximum_hip_torque,
+                )
+            )
+
+        wheel_torques = self._wheel_torques(speed, wheel_velocities, dt)
+
+        return CrossingCommand(
+            phase=self.phase,
+            hip_torques=hip_torques,
+            wheel_torques=wheel_torques,
+            leg_forces={name: float(forces[index]) for index, name in enumerate(ALL_LEGS)},
+            desired_height=height_target,
+            desired_pitch=pitch_target,
+            done=self.phase == CrossingPhase.DONE,
+            failed=self.failed,
+            failure_reason=self.failure_reason,
+        )
+
+    def _advance_phase(self, state: VMCState, wheels: Mapping[str, WheelObservation]) -> None:
+        """Apply phase-transition and timeout rules."""
+
+        timeout = self.parameters.phase_timeouts.get(self.phase, inf)
+        if self.phase_time > timeout:
+            self.failed = True
+            self.failure_reason = f"phase {self.phase.value} exceeded {timeout:.1f} s"
+            return
+
+        front = [wheels[name] for name in FRONT_LEGS]
+        rear = [wheels[name] for name in REAR_LEGS]
+        p = self.parameters
+        face = p.step_face_x
+        top = p.step_height + p.wheel_radius
+
+        if self.phase == CrossingPhase.APPROACH:
+            if min(w.x for w in front) >= face - p.wheel_radius - p.contact_margin:
+                self._enter(CrossingPhase.FRONT_CLIMB, wheels)
+        elif self.phase == CrossingPhase.FRONT_CLIMB:
+            if (
+                min(w.x for w in front) >= face + p.edge_clearance
+                and min(w.z for w in front) >= top - p.contact_margin
+            ):
+                self._enter(CrossingPhase.STRADDLE)
+        elif self.phase == CrossingPhase.STRADDLE:
+            if min(w.x for w in rear) >= face - p.wheel_radius - p.contact_margin:
+                self._enter(CrossingPhase.REAR_CLIMB, wheels)
+        elif self.phase == CrossingPhase.REAR_CLIMB:
+            if (
+                min(w.x for w in rear) >= face + p.edge_clearance
+                and min(w.z for w in rear) >= top - p.contact_margin
+            ):
+                self._enter(CrossingPhase.EXTEND)
+        elif self.phase == CrossingPhase.EXTEND:
+            settled = abs(state.height - p.extend_height) <= p.extend_settle
+            if self.phase_time >= p.extend_duration and settled:
+                self._enter(CrossingPhase.DONE)
+
+    def _enter(
+        self, phase: CrossingPhase, wheels: Mapping[str, WheelObservation] | None = None
+    ) -> None:
+        """Switch to ``phase`` and reset per-phase bookkeeping."""
+
+        self.phase = phase
+        self.phase_time = 0.0
+        if phase == CrossingPhase.EXTEND:
+            self._extend_start_height = None  # 由 _phase_targets 首次调用记录
+        if wheels is not None:
+            if phase == CrossingPhase.REAR_CLIMB:
+                rear_z = sum(wheels[name].z for name in REAR_LEGS) / len(REAR_LEGS)
+                self._rear_lift_target = float(rear_z)
+
+    def _phase_targets(
+        self, state: VMCState, wheels: Mapping[str, WheelObservation]
+    ) -> tuple[float, float, tuple[float, float]]:
+        """Return ``(height_target, pitch_target, (front_speed, rear_speed))``.
+
+        除 EXTEND 高度斜坡外，车身全程保持水平（pitch 目标 0）。
+        """
+
+        p = self.parameters
+        if self.phase == CrossingPhase.EXTEND:
+            if self._extend_start_height is None:
+                self._extend_start_height = float(state.height)
+            fraction = min(1.0, self.phase_time / p.extend_duration)
+            height = self._extend_start_height + fraction * (
+                p.extend_height - self._extend_start_height
+            )
+            return height, 0.0, (p.extend_speed, p.extend_speed)
+        if self.phase == CrossingPhase.DONE:
+            return p.extend_height, 0.0, (0.0, 0.0)
+        speed = p.forward_speed
+        if self.phase == CrossingPhase.FRONT_CLIMB:
+            # 前爬：前后轮都保持较强自转与顶压（前轮沿立面爬升）。
+            speed += p.front_press_offset
+            return p.stance_height, 0.0, (speed, speed)
+        return p.stance_height, 0.0, (p.forward_speed, p.forward_speed)
+
+    def _advance_lift_target(self, attribute: str, dt: float) -> None:
+        """推进一个爬升轴的提升调度目标，越过台面即封顶。"""
+
+        cap = self.parameters.step_height + self.parameters.wheel_radius + 0.01
+        current = getattr(self, attribute)
+        setattr(self, attribute, min(current + self.parameters.lift_rate * dt, cap))
+
+    def _leg_force_cap(self, name: str) -> float:
+        """Return the per-leg stance force upper bound in the current phase.
+
+        前爬阶段，前腿（爬升轴）支撑力被压到力帽以下：轮子抵住立面的
+        滚动摩擦力与顶压法向力成正比，只有摩擦力超过腿部下压力时，
+        车轮才能沿立面向上爬。其余阶段取满最大支撑力。
+        """
+
+        p = self.parameters
+        if self.phase == CrossingPhase.FRONT_CLIMB and name in FRONT_LEGS:
+            return min(p.maximum_leg_force, p.front_climbing_cap)
+        return p.maximum_leg_force
+
+    def _rear_climb_command(
+        self,
+        state: VMCState,
+        wheels: Mapping[str, WheelObservation],
+        wheel_velocities: Mapping[str, float],
+        leg_rates: Mapping[str, float],
+        dt: float,
+    ) -> CrossingCommand:
+        """后爬：四腿位置控制，前腿锁最短、后腿按提升调度收缩。
+
+        前腿锁在最短长度（轮心与安装座距离最小），俯仰被几何钉死；
+        后腿收缩把后轮沿立面拖上去；前轮在台面打滑顶压，后轮小自转
+        维持齿轮方向。
+        """
+
+        p = self.parameters
+        hip_torques: dict[str, float] = {}
+        for name in ALL_LEGS:
+            q = self._clamped_angle(float(state.leg_angles[name]))
+            if name in REAR_LEGS:
+                q_target = self._servo_target(name, state, self._rear_lift_target)
+            else:
+                q_target = self.geometry.q_max  # 最短：收缩到位
+            hip_torques[name] = self._servo_torque(q, q_target, leg_rates[name])
+
+        speed = (p.forward_speed + p.rear_press_offset, 0.45)
+        wheel_torques = self._wheel_torques(speed, wheel_velocities, dt)
+        return CrossingCommand(
+            phase=self.phase,
+            hip_torques=hip_torques,
+            wheel_torques=wheel_torques,
+            leg_forces={name: 0.0 for name in ALL_LEGS},
+            desired_height=p.stance_height,
+            desired_pitch=0.0,
+            done=False,
+            failed=self.failed,
+            failure_reason=self.failure_reason,
+        )
+
+    def _servo_target(self, name: str, state: VMCState, lift_target: float) -> float:
+        """爬升轴髋部目标：把轮子提升到调度高度所需的收缩量。"""
+
+        mount = self.mounts[name]
+        offset = (np.asarray(state.body_to_world, dtype=float) @ mount.position_body)[2]
+        mount_z = float(state.height) + float(offset)
+        drop = mount_z - lift_target
+        return self.q_for_wheel_drop(drop)
+
+    def _servo_torque(self, q: float, q_target: float, q_rate: float) -> float:
+        """位置伺服力矩：刚度保持 + 阻尼，限幅到髋力矩上限。"""
+
+        p = self.parameters
+        torque = p.air_kp * (q_target - q) - p.air_kd * float(q_rate)
+        return float(np.clip(torque, -p.maximum_hip_torque, p.maximum_hip_torque))
+
+    def _wheel_torques(
+        self,
+        speed: tuple[float, float],
+        wheel_velocities: Mapping[str, float],
+        dt: float,
+    ) -> dict[str, float]:
+        """把 (前轮速度, 后轮速度) 映射为各轮力矩。"""
+
+        mounts_y = {name: float(self.mounts[name].position_body[1]) for name in ALL_LEGS}
+        front_speed, rear_speed = speed
+        targets = {}
+        for group, group_speed in ((FRONT_LEGS, front_speed), (REAR_LEGS, rear_speed)):
+            group_targets = wheel_speed_targets(
+                TeleopCommand(v_x=group_speed, omega_yaw=0.0),
+                self.parameters.wheel_radius,
+                {name: mounts_y[name] for name in group},
+            )
+            targets.update(group_targets)
+        return self.wheel_controller.update(targets, wheel_velocities, dt=dt)
+
+    def _clamped_angle(self, q: float) -> float:
+        """Clamp a measured hip angle into the analytical working interval."""
+
+        return float(np.clip(q, self.geometry.q_min, self.geometry.q_max))

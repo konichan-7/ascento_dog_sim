@@ -50,6 +50,20 @@ def load_quadruped_model():
     return model, data
 
 
+def load_step_model():
+    """Load and return ``(mjModel, mjData)`` for the step-crossing scene.
+
+    该场景在整机机器人模型基础上新增了一个 150 mm 高的平台，
+    机器人名称、关节与执行器命名与 ``quadruped.xml`` 完全一致。
+    """
+
+    import mujoco
+
+    model = mujoco.MjModel.from_xml_path(str(STEP_MODEL_PATH))
+    data = mujoco.MjData(model)
+    return model, data
+
+
 def set_quadruped_pose(
     model,
     data,
