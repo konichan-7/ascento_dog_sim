@@ -38,3 +38,8 @@ def test_nonpositive_drive_parameters_rejected() -> None:
 
 def test_valid_teleop_args_pass() -> None:
     vmc._validate_args(_args(teleop=True))
+
+
+def test_teleop_ignores_amplitude_in_height_check() -> None:
+    # teleop 不走高度正弦,幅值即使超出非 teleop 的叠加范围也不应报错。
+    vmc._validate_args(_args(teleop=True, amplitude=0.2))

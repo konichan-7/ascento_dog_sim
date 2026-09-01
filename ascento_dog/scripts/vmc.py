@@ -166,7 +166,11 @@ def _validate_args(args: argparse.Namespace) -> None:
         raise SystemExit("扰动力矩不得为负数，扰动周期必须为正数")
     if not 0.0 < args.disturbance_duration < 0.5 * args.disturbance_period:
         raise SystemExit("扰动持续时间必须位于 (0, disturbance-period/2) 内")
-    if not 0.25 <= args.height - args.amplitude <= args.height + args.amplitude <= 0.46:
+    if args.teleop:
+        # teleop 模式下不走高度正弦,幅值参数不参与高度范围校验。
+        if not 0.25 <= args.height <= 0.46:
+            raise SystemExit("目标高度必须位于 [0.25, 0.46] m")
+    elif not 0.25 <= args.height - args.amplitude <= args.height + args.amplitude <= 0.46:
         raise SystemExit("目标高度范围必须位于 [0.25, 0.46] m")
     if args.teleop and args.headless:
         raise SystemExit("--teleop 需要 viewer,不能与 --headless 同时使用")

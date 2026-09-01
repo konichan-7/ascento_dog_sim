@@ -39,3 +39,22 @@ def test_forward_command_translates_the_robot_forward() -> None:
     state = read_vmc_state(model, data)
     assert abs(state.roll) < np.deg2rad(5.0)
     assert abs(state.pitch) < np.deg2rad(5.0)
+
+
+def test_yaw_command_turns_the_robot_left() -> None:
+    model, data = load_quadruped_model()
+    set_quadruped_pose(model, data, DEFAULT_GEOMETRY.q_nominal, wheels_on_floor=True)
+    controller = create_default_vmc(model)
+    wheel_controller = WheelVelocityController(
+        WheelSpeedGains(kp=0.5, ki=0.2, integral_limit=3.0, output_limit=10.0)
+    )
+    start_yaw = read_vmc_state(model, data).yaw
+    command = DriveCommand(v_x=0.0, omega_yaw=1.0)
+
+    while data.time < 1.5:
+        step_drive(model, data, controller, wheel_controller, command, desired_height=0.37)
+        assert np.all(np.isfinite(data.qpos))
+        assert np.all(np.isfinite(data.qvel))
+
+    # positive omega_yaw (the A key) must yaw counterclockwise from above (left turn)
+    assert read_vmc_state(model, data).yaw - start_yaw > np.deg2rad(3.0)

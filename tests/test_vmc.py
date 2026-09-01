@@ -103,6 +103,11 @@ def test_height_pid_output_and_anti_windup() -> None:
     assert abs(pid.integral) <= 0.001 + 1.0e-12
 
 
+def test_pid_nan_limits_rejected() -> None:
+    with pytest.raises(ValueError):
+        PIDGains(100.0, 50.0, 10.0, integral_limit=float("nan"))
+
+
 def test_quadruped_vmc_compensates_gravity_and_maps_force_to_torque() -> None:
     mass = 20.0
     controller = QuadrupedVMC(
