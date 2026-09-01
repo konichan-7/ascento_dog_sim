@@ -44,6 +44,7 @@
       <freejoint name="floating_base"/>
       <geom name="chassis_box" type="box" size="0.30 0.18 0.075"
             material="chassis_mat"/>
+      <site name="imu_site" pos="0 0 0.02" size="0.004" rgba="1 0.8 0 0.5"/>
 
       <!-- Front-left leg: local analytical +x points forward. -->
       <body name="front_left_mount" pos="0.24 0.20 0">
@@ -245,4 +246,10 @@
     <motor name="rear_left_wheel_motor" joint="rear_left_wheel_spin"/>
     <motor name="rear_right_wheel_motor" joint="rear_right_wheel_spin"/>
   </actuator>
+
+  <sensor>
+    <framequat name="imu_quat" objtype="body" objname="chassis"/>
+    <gyro name="imu_gyro" site="imu_site"/>
+    <framelinacc name="imu_accel" objtype="site" objname="imu_site"/>
+  </sensor>
 </mujoco>

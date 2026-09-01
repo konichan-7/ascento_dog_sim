@@ -8,6 +8,7 @@ from ascento_dog.kinematics import DEFAULT_GEOMETRY
 from ascento_dog.simulation import (
     create_default_vmc,
     load_quadruped_model,
+    read_imu_attitude,
     read_vmc_state,
     set_quadruped_pose,
     step_drive,
@@ -58,3 +59,14 @@ def test_yaw_command_turns_the_robot_left() -> None:
 
     # positive omega_yaw (the A key) must yaw counterclockwise from above (left turn)
     assert read_vmc_state(model, data).yaw - start_yaw > np.deg2rad(3.0)
+
+
+def test_imu_sensor_reports_level_attitude_at_rest() -> None:
+    model, data = load_quadruped_model()
+    set_quadruped_pose(model, data, DEFAULT_GEOMETRY.q_nominal, wheels_on_floor=True)
+    for sensor_name in ("imu_quat", "imu_gyro", "imu_accel"):
+        assert data.sensor(sensor_name) is not None
+    yaw, pitch, roll = read_imu_attitude(model, data)
+    assert np.all(np.isfinite((yaw, pitch, roll)))
+    assert roll == pytest.approx(0.0, abs=1.0e-9)
+    assert pitch == pytest.approx(0.0, abs=1.0e-9)

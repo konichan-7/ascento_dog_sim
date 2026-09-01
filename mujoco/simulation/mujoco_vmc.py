@@ -233,3 +233,21 @@ def step_drive(
     apply_wheel_command(model, data, wheel_torques)
     mujoco.mj_step(model, data)
     return hip_command
+
+
+def read_imu_attitude(model, data) -> tuple[float, float, float]:
+    """Return ZYX ``(yaw, pitch, roll)`` in radians from the chassis IMU.
+
+    Reads the model's ``imu_quat`` ``framequat`` sensor on the chassis body and
+    converts the quaternion to a rotation matrix, then to ZYX Euler angles
+    (same convention as ``yaw_pitch_roll_from_rotation``).
+    """
+
+    import mujoco
+
+    quat = np.asarray(data.sensor("imu_quat").data, dtype=float)
+    if quat.shape != (4,):
+        raise ValueError("imu_quat sensor must return a 4-vector")
+    rotation = np.empty(9)
+    mujoco.mju_quat2Mat(rotation, quat)
+    return yaw_pitch_roll_from_rotation(rotation.reshape(3, 3))
