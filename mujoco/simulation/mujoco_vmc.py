@@ -57,7 +57,7 @@ def create_default_vmc(
 
     mounts: dict[str, ControlLegMount] = {}
     for name, mount in LEG_MOUNTS.items():
-        mounts[name] = ControlLegMount(mount.position, np.eye(3))
+        mounts[name] = ControlLegMount(mount.position, mount.rotation)
     return QuadrupedVMC(
         mass=float(np.sum(model.body_mass)),
         mounts=mounts,

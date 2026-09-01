@@ -46,8 +46,9 @@
             material="chassis_mat"/>
       <site name="imu_site" pos="0 0 0.02" size="0.004" rgba="1 0.8 0 0.5"/>
 
-      <!-- Front-left leg: local analytical +x points forward. -->
-      <body name="front_left_mount" pos="0.24 0.20 0">
+      <!-- Front-left leg: local analytical +x points toward chassis -x
+           (knee bends rearward, toward the travel-opposite side). -->
+      <body name="front_left_mount" pos="0.24 0.20 0" quat="0 0 0 1">
         <geom name="front_left_frame_AB" fromto="0 0 0 0.0769968574 0 0.0769968574"
               size="0.014" material="frame_mat"/>
         <geom name="front_left_hip_housing" type="cylinder" pos="0 0 0"
@@ -71,7 +72,7 @@
             <site name="front_left_point_C" pos="0.057 0 0" rgba="0.9 0.2 0.9 0"/>
             <site name="front_left_point_E" pos="-0.235 0 0" rgba="0.2 1 0.4 1"/>
             <body name="front_left_wheel" pos="-0.235 0 0">
-              <joint name="front_left_wheel_spin" axis="0 1 0" damping="0.01"/>
+              <joint name="front_left_wheel_spin" axis="0 -1 0" damping="0.01"/>
               <geom name="front_left_wheel_geom" type="cylinder" size="0.065 0.025"
                     quat="0.7071067812 0.7071067812 0 0" material="wheel_mat"
                     contype="1" conaffinity="1" friction="1.0 0.01 0.001"/>
@@ -89,7 +90,7 @@
       </body>
 
       <!-- Front-right leg. -->
-      <body name="front_right_mount" pos="0.24 -0.20 0">
+      <body name="front_right_mount" pos="0.24 -0.20 0" quat="0 0 0 1">
         <geom name="front_right_frame_AB" fromto="0 0 0 0.0769968574 0 0.0769968574"
               size="0.014" material="frame_mat"/>
         <geom name="front_right_hip_housing" type="cylinder" pos="0 0 0"
@@ -113,7 +114,7 @@
             <site name="front_right_point_C" pos="0.057 0 0" rgba="0.9 0.2 0.9 0"/>
             <site name="front_right_point_E" pos="-0.235 0 0" rgba="0.2 1 0.4 1"/>
             <body name="front_right_wheel" pos="-0.235 0 0">
-              <joint name="front_right_wheel_spin" axis="0 1 0" damping="0.01"/>
+              <joint name="front_right_wheel_spin" axis="0 -1 0" damping="0.01"/>
               <geom name="front_right_wheel_geom" type="cylinder" size="0.065 0.025"
                     quat="0.7071067812 0.7071067812 0 0" material="wheel_mat"
                     contype="1" conaffinity="1" friction="1.0 0.01 0.001"/>
@@ -131,7 +132,7 @@
       </body>
 
       <!-- Rear-left leg: same local +x direction as both front legs. -->
-      <body name="rear_left_mount" pos="-0.24 0.20 0">
+      <body name="rear_left_mount" pos="-0.24 0.20 0" quat="0 0 0 1">
         <geom name="rear_left_frame_AB" fromto="0 0 0 0.0769968574 0 0.0769968574"
               size="0.014" material="frame_mat"/>
         <geom name="rear_left_hip_housing" type="cylinder" pos="0 0 0"
@@ -155,7 +156,7 @@
             <site name="rear_left_point_C" pos="0.057 0 0" rgba="0.9 0.2 0.9 0"/>
             <site name="rear_left_point_E" pos="-0.235 0 0" rgba="0.2 1 0.4 1"/>
             <body name="rear_left_wheel" pos="-0.235 0 0">
-              <joint name="rear_left_wheel_spin" axis="0 1 0" damping="0.01"/>
+              <joint name="rear_left_wheel_spin" axis="0 -1 0" damping="0.01"/>
               <geom name="rear_left_wheel_geom" type="cylinder" size="0.065 0.025"
                     quat="0.7071067812 0.7071067812 0 0" material="wheel_mat"
                     contype="1" conaffinity="1" friction="1.0 0.01 0.001"/>
@@ -173,7 +174,7 @@
       </body>
 
       <!-- Rear-right leg. -->
-      <body name="rear_right_mount" pos="-0.24 -0.20 0">
+      <body name="rear_right_mount" pos="-0.24 -0.20 0" quat="0 0 0 1">
         <geom name="rear_right_frame_AB" fromto="0 0 0 0.0769968574 0 0.0769968574"
               size="0.014" material="frame_mat"/>
         <geom name="rear_right_hip_housing" type="cylinder" pos="0 0 0"
@@ -197,7 +198,7 @@
             <site name="rear_right_point_C" pos="0.057 0 0" rgba="0.9 0.2 0.9 0"/>
             <site name="rear_right_point_E" pos="-0.235 0 0" rgba="0.2 1 0.4 1"/>
             <body name="rear_right_wheel" pos="-0.235 0 0">
-              <joint name="rear_right_wheel_spin" axis="0 1 0" damping="0.01"/>
+              <joint name="rear_right_wheel_spin" axis="0 -1 0" damping="0.01"/>
               <geom name="rear_right_wheel_geom" type="cylinder" size="0.065 0.025"
                     quat="0.7071067812 0.7071067812 0 0" material="wheel_mat"
                     contype="1" conaffinity="1" friction="1.0 0.01 0.001"/>

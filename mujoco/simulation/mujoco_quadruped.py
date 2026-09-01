@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
@@ -11,22 +11,32 @@ from numpy.typing import NDArray
 from ascento_dog.kinematics import DEFAULT_GEOMETRY, FourBarGeometry, LegPose
 
 MODEL_PATH = Path(__file__).resolve().parents[2] / "mujoco" / "quadruped.xml"
+STEP_MODEL_PATH = Path(__file__).resolve().parents[2] / "mujoco" / "quadruped_step.xml"
 WHEEL_RADIUS = 0.065
 CHASSIS_SIZE = np.array([0.60, 0.36, 0.15], dtype=float)
 
 
+# 腿安装座绕 z 轴旋转 180°：解析腿系 +x 指向机体 -x（屈膝朝向机体后方）。
+LEG_ROTATION = np.array([[-1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, 1.0]], dtype=float)
+
+
 @dataclass(frozen=True)
 class LegMount:
-    """One linkage frame expressed in the chassis frame, in meters."""
+    """One linkage frame expressed in the chassis frame, in meters.
+
+    ``position`` is the hip point A in the chassis frame;
+    ``rotation`` maps leg-frame vectors into the chassis frame.
+    """
 
     position: NDArray[np.float64]
+    rotation: NDArray[np.float64] = field(default_factory=lambda: np.eye(3))
 
 
 LEG_MOUNTS = {
-    "front_left": LegMount(np.array([0.24, 0.20, 0.0])),
-    "front_right": LegMount(np.array([0.24, -0.20, 0.0])),
-    "rear_left": LegMount(np.array([-0.24, 0.20, 0.0])),
-    "rear_right": LegMount(np.array([-0.24, -0.20, 0.0])),
+    "front_left": LegMount(np.array([0.24, 0.20, 0.0]), LEG_ROTATION),
+    "front_right": LegMount(np.array([0.24, -0.20, 0.0]), LEG_ROTATION),
+    "rear_left": LegMount(np.array([-0.24, 0.20, 0.0]), LEG_ROTATION),
+    "rear_right": LegMount(np.array([-0.24, -0.20, 0.0]), LEG_ROTATION),
 }
 
 
@@ -112,7 +122,7 @@ def expected_leg_points_in_chassis(leg_name: str, pose: LegPose) -> dict[str, ND
     result: dict[str, NDArray[np.float64]] = {}
     for point_name, point_xz in pose.points().items():
         local = np.array([point_xz[0], 0.0, point_xz[1]])
-        result[point_name] = mount.position + local
+        result[point_name] = mount.position + mount.rotation @ local
     return result
 
 
