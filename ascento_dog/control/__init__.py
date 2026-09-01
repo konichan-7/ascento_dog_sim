@@ -11,6 +11,13 @@ from ascento_dog.control.vmc import (
     allocate_vertical_forces,
     vertical_force_allocation_matrix,
 )
+from ascento_dog.control.wheel_speed import (
+    DriveCommand,
+    PulseTeleop,
+    WheelSpeedGains,
+    WheelVelocityController,
+    wheel_speed_targets,
+)
 
 __all__ = [
     "AttitudeGains",
@@ -22,4 +29,9 @@ __all__ = [
     "VMCState",
     "allocate_vertical_forces",
     "vertical_force_allocation_matrix",
+    "DriveCommand",
+    "PulseTeleop",
+    "WheelSpeedGains",
+    "WheelVelocityController",
+    "wheel_speed_targets",
 ]
