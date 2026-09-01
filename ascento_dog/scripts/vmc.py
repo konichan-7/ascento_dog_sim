@@ -117,6 +117,7 @@ def _run_with_viewer(model, data, controller, args, simulation_start, history, w
             key = chr(keycode) if 32 <= keycode < 127 else ""
             if key and key in "WASD":
                 teleop.press(key, time.monotonic())
+                print(f"[teleop] key={key!r} keycode={keycode}", flush=True)
 
     # teleop 模式下隐藏左右 UI 面板,避免文本输入框抢键盘焦点与 WASD 遥杆冲突。
     show_ui = teleop is None
