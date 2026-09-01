@@ -44,7 +44,7 @@ $$
 | --- | --- | --- |
 | 解析运动学 | `ascento_dog/kinematics/four_bar.py` | 正逆运动学、装配支路、解析轮心雅可比 |
 | VMC 控制器 | `ascento_dog/control/vmc.py` | 高度 PID、姿态 PD、受力分配、虚拟力到髋力矩 |
-| MuJoCo 适配 | `ascento_dog/simulation/mujoco_vmc.py` | 读取仿真状态、计算整车质心、写入力矩、施加扰动 |
+| MuJoCo 适配 | `mujoco/simulation/mujoco_vmc.py` | 读取仿真状态、计算整车质心、写入力矩、施加扰动 |
 | 动力学模型 | `mujoco/quadruped.xml` | 重力、轮地接触、闭环腿、髋力矩执行器 |
 | 可视化入口 | `ascento_dog/scripts/vmc.py` | 目标高度、三轴周期扰动、实时 Viewer 和姿态记录 |
 | 曲线导出 | `ascento_dog/plotting.py` | yaw/pitch/roll 曲线、扰动区间、CSV/PDF/PNG 导出 |

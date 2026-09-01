@@ -5,7 +5,7 @@
 为采用 Ascento 构型的四轮足机器人构建一套可复现的仿真与控制系统。项目分为三层开发：
 
 1. `docs/`：记录假设、推导、验证报告和设计决策。
-2. `mujoco/` 与 `ascento_dog/simulation/`：存放 MuJoCo 资源和模型适配代码。
+2. `mujoco/` 与 `mujoco/simulation/`：存放 MuJoCo 资源（MJCF）和模型适配代码。
 3. `ascento_dog/control/`：存放使用已验证模型和运动学的控制器。
 
 采用渐进式开发方式。在加入整机动力学或控制器之前，必须持续保证浮空单腿模型及其运动学通过验证。
@@ -48,9 +48,9 @@
 ## 仓库结构
 
 - `docs/`：供开发者阅读的推导、参数来源、假设和验证记录。关键模型约定不能只存在于代码中。
-- `mujoco/`：手工编写的 MJCF 文件以及后续网格资源。
+- `mujoco/`：手工编写的 MJCF 文件、后续网格资源，以及 `mujoco/simulation/` 下的 MuJoCo 仿真适配代码。
 - `ascento_dog/kinematics/`：不依赖 MuJoCo 的解析几何与运动学。
-- `ascento_dog/simulation/`：MuJoCo 模型加载、状态映射和验证工具。
+- `mujoco/simulation/`：MuJoCo 模型加载、状态映射和验证工具；`mujoco/` 不能作为 Python 包（会遮蔽同名绑定库），因此该包经 `ascento_dog/__init__.py` 的 `__path__` 扩展以 `ascento_dog.simulation` 导入。
 - `ascento_dog/control/`：控制器；不得在控制器中重复实现运动学公式。
 - `ascento_dog/plotting.py`：VMC 姿态时序的 CSV、PDF 和 PNG 导出。
 - `ascento_dog/scripts/`：只保留单腿悬空运动学和整车 VMC 两个轻量入口。
@@ -66,7 +66,7 @@
 
 单腿模型保持零重力并关闭腿部接触，用于将闭环连杆几何与整车动力学隔离。整车模型在自由长方体机身上同向安装四条已验证的闭环腿，每个轮子具有独立转动关节；模型启用重力和轮地接触，四个髋关节由力矩执行器驱动。
 
-`ascento_dog/simulation/` 负责解析状态与 MuJoCo 状态之间的映射、具名验证点、整车质心读取、VMC 指令写入和扰动注入。解析运动学始终作为 MuJoCo 点位的外部真值。
+`mujoco/simulation/`（以 `ascento_dog.simulation` 导入）负责解析状态与 MuJoCo 状态之间的映射、具名验证点、整车质心读取、VMC 指令写入和扰动注入。解析运动学始终作为 MuJoCo 点位的外部真值。
 
 ### 控制层
 
