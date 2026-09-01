@@ -7,10 +7,10 @@ allocation, and analytical Jacobian-transpose force-to-torque mapping.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from itertools import product
 from math import inf
-from typing import Mapping
 
 import numpy as np
 from numpy.typing import NDArray
@@ -87,9 +87,7 @@ class HeightPID:
             + self.gains.ki * candidate_integral
             - self.gains.kd * vertical_velocity
         )
-        output = float(
-            np.clip(unsaturated, -self.gains.output_limit, self.gains.output_limit)
-        )
+        output = float(np.clip(unsaturated, -self.gains.output_limit, self.gains.output_limit))
 
         # Integrate when unsaturated, or when the current error moves a
         # saturated output back toward its admissible interval.
@@ -306,9 +304,7 @@ class QuadrupedVMC:
 
         self.height_pid.reset()
 
-    def compute(
-        self, state: VMCState, *, desired_height: float, dt: float
-    ) -> VMCCommand:
+    def compute(self, state: VMCState, *, desired_height: float, dt: float) -> VMCCommand:
         """Compute bounded wheel forces and hip torques for one control step."""
 
         if set(state.leg_angles) != set(self.mounts):
@@ -345,9 +341,7 @@ class QuadrupedVMC:
             wheel_leg = np.array([pose.e[0], 0.0, pose.e[1]])
             mount = self.mounts[name]
             contact_points.append(
-                mount.position_body
-                + mount.rotation_body_from_leg @ wheel_leg
-                - center_of_mass
+                mount.position_body + mount.rotation_body_from_leg @ wheel_leg - center_of_mass
             )
         points = np.asarray(contact_points)
         forces, achieved = allocate_vertical_forces(
@@ -364,9 +358,7 @@ class QuadrupedVMC:
             q = float(state.leg_angles[name])
             jacobian_xz = self.geometry.wheel_jacobian(q)
             jacobian_leg = np.array([jacobian_xz[0], 0.0, jacobian_xz[1]])
-            jacobian_world = (
-                rotation @ self.mounts[name].rotation_body_from_leg @ jacobian_leg
-            )
+            jacobian_world = rotation @ self.mounts[name].rotation_body_from_leg @ jacobian_leg
             # Static virtual-work balance: tau + J^T F_ground = 0.
             torque = -forces[index] * float(world_up @ jacobian_world)
             hip_torques[name] = float(

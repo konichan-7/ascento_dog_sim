@@ -53,7 +53,10 @@ def main() -> None:
     wheel_controller = (
         WheelVelocityController(
             WheelSpeedGains(
-                kp=0.5, ki=0.2, integral_limit=3.0, output_limit=10.0  # 示意,待整定
+                kp=0.5,
+                ki=0.2,
+                integral_limit=3.0,
+                output_limit=10.0,  # 示意,待整定
             )
         )
         if args.teleop

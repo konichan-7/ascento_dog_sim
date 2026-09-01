@@ -111,6 +111,8 @@
 
 ```bash
 uv sync --dev
+uv run ruff check
+uv run ruff format --check
 uv run pytest
 uv run leg-kinematics
 uv run vmc

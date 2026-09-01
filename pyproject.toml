@@ -17,6 +17,7 @@ dependencies = [
 [dependency-groups]
 dev = [
   "pytest>=8,<9",
+  "ruff>=0.16.5",
 ]
 
 [project.scripts]
@@ -29,3 +30,16 @@ packages = ["ascento_dog"]
 [tool.pytest.ini_options]
 addopts = "-ra"
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ascento_dog"]
+
+[tool.ruff.format]
+quote-style = "double"

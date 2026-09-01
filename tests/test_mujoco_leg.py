@@ -3,8 +3,8 @@ import pytest
 
 mujoco = pytest.importorskip("mujoco")
 
-from ascento_dog.kinematics import DEFAULT_GEOMETRY
-from ascento_dog.simulation.mujoco_leg import (
+from ascento_dog.kinematics import DEFAULT_GEOMETRY  # noqa: E402
+from ascento_dog.simulation.mujoco_leg import (  # noqa: E402
     load_single_leg_model,
     loop_error,
     model_points_in_base,

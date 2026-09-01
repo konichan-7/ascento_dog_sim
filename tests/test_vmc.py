@@ -15,7 +15,6 @@ from ascento_dog.control import (
 from ascento_dog.kinematics import DEFAULT_GEOMETRY
 from ascento_dog.simulation import yaw_pitch_roll_from_rotation
 
-
 LEG_NAMES = ("front_left", "front_right", "rear_left", "rear_right")
 
 
@@ -47,9 +46,7 @@ def test_yaw_pitch_roll_extraction() -> None:
 
 def test_level_symmetric_force_allocation_has_closed_form_solution() -> None:
     a, b, height = 0.24, 0.20, 0.30
-    points = np.array(
-        [[a, b, -height], [a, -b, -height], [-a, b, -height], [-a, -b, -height]]
-    )
+    points = np.array([[a, b, -height], [a, -b, -height], [-a, b, -height], [-a, -b, -height]])
     desired = np.array([200.0, 8.0, -12.0])
     forces, achieved = allocate_vertical_forces(desired, points, np.eye(3))
     expected = np.array(
@@ -132,9 +129,7 @@ def test_quadruped_vmc_compensates_gravity_and_maps_force_to_torque() -> None:
     assert np.sum(forces) == pytest.approx(mass * 9.81)
     assert command.achieved_wrench == pytest.approx([mass * 9.81, 0.0, 0.0], abs=1.0e-10)
     jacobian_z = DEFAULT_GEOMETRY.wheel_jacobian(DEFAULT_GEOMETRY.q_nominal)[1]
-    assert list(command.hip_torques.values()) == pytest.approx(
-        -forces * jacobian_z
-    )
+    assert list(command.hip_torques.values()) == pytest.approx(-forces * jacobian_z)
     assert command.allocation_residual == pytest.approx(np.zeros(3), abs=1.0e-10)
 
 

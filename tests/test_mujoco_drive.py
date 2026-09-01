@@ -3,9 +3,9 @@ import pytest
 
 mujoco = pytest.importorskip("mujoco")
 
-from ascento_dog.control import DriveCommand, WheelSpeedGains, WheelVelocityController
-from ascento_dog.kinematics import DEFAULT_GEOMETRY
-from ascento_dog.simulation import (
+from ascento_dog.control import DriveCommand, WheelSpeedGains, WheelVelocityController  # noqa: E402
+from ascento_dog.kinematics import DEFAULT_GEOMETRY  # noqa: E402
+from ascento_dog.simulation import (  # noqa: E402
     create_default_vmc,
     load_quadruped_model,
     read_imu_attitude,

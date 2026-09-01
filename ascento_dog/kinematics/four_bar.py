@@ -93,9 +93,7 @@ class FourBarGeometry:
         b = self.b
         d = self.l2 * np.array([cos(q), sin(q)], dtype=float)
         intersections = _circle_intersections(b, self.l3, d, self.l23)
-        candidates = [
-            c for c in intersections if _cross_2d(d - b, c - d) > 1.0e-12
-        ]
+        candidates = [c for c in intersections if _cross_2d(d - b, c - d) > 1.0e-12]
         if len(candidates) != 1:
             raise UnreachableTargetError(
                 f"hip angle {q:.9g} rad does not have one nonsingular working-branch closure"
@@ -148,8 +146,7 @@ class FourBarGeometry:
 
         if not solutions:
             raise UnreachableTargetError(
-                "wheel target is not on the selected one-DoF linkage path within "
-                f"{tolerance:g} m"
+                f"wheel target is not on the selected one-DoF linkage path within {tolerance:g} m"
             )
         solutions.sort(key=lambda item: item[0])
         return solutions[0][1]
@@ -215,12 +212,8 @@ class FourBarGeometry:
         closure_matrix = np.vstack((pose.c - pose.b, pose.c - pose.d))
         determinant = float(np.linalg.det(closure_matrix))
         if abs(determinant) <= singular_tolerance:
-            raise UnreachableTargetError(
-                f"linkage is singular at hip angle {q:.9g} rad"
-            )
-        right_hand_side = np.array(
-            [0.0, float(np.dot(pose.c - pose.d, d_dot))], dtype=float
-        )
+            raise UnreachableTargetError(f"linkage is singular at hip angle {q:.9g} rad")
+        right_hand_side = np.array([0.0, float(np.dot(pose.c - pose.d, d_dot))], dtype=float)
         c_dot = np.linalg.solve(closure_matrix, right_hand_side)
 
         ratio = self.l1 / self.l23

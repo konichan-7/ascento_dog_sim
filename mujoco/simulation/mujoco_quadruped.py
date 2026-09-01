@@ -84,9 +84,7 @@ def set_quadruped_pose(
     return {leg_name: pose for leg_name in LEG_MOUNTS}
 
 
-def model_leg_points_in_chassis(
-    model, data, leg_name: str
-) -> dict[str, NDArray[np.float64]]:
+def model_leg_points_in_chassis(model, data, leg_name: str) -> dict[str, NDArray[np.float64]]:
     """Read one leg's A-E sites in the chassis frame, in meters."""
 
     import mujoco
@@ -107,9 +105,7 @@ def model_leg_points_in_chassis(
     return points
 
 
-def expected_leg_points_in_chassis(
-    leg_name: str, pose: LegPose
-) -> dict[str, NDArray[np.float64]]:
+def expected_leg_points_in_chassis(leg_name: str, pose: LegPose) -> dict[str, NDArray[np.float64]]:
     """Map analytical A-E points into the chassis frame for one mount."""
 
     mount = LEG_MOUNTS[leg_name]
@@ -125,12 +121,8 @@ def leg_loop_error(model, data, leg_name: str) -> float:
 
     import mujoco
 
-    lower = mujoco.mj_name2id(
-        model, mujoco.mjtObj.mjOBJ_SITE, f"{leg_name}_point_C_lower"
-    )
-    upper = mujoco.mj_name2id(
-        model, mujoco.mjtObj.mjOBJ_SITE, f"{leg_name}_point_C_upper"
-    )
+    lower = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, f"{leg_name}_point_C_lower")
+    upper = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_SITE, f"{leg_name}_point_C_upper")
     return float(np.linalg.norm(data.site_xpos[lower] - data.site_xpos[upper]))
 
 
@@ -141,9 +133,7 @@ def wheel_bottom_heights(model, data) -> dict[str, float]:
 
     heights: dict[str, float] = {}
     for leg_name in LEG_MOUNTS:
-        body_id = mujoco.mj_name2id(
-            model, mujoco.mjtObj.mjOBJ_BODY, f"{leg_name}_wheel"
-        )
+        body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, f"{leg_name}_wheel")
         heights[leg_name] = float(data.xpos[body_id, 2] - WHEEL_RADIUS)
     return heights
 

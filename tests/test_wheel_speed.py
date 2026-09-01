@@ -1,4 +1,3 @@
-import numpy as np
 import pytest
 
 from ascento_dog.control import (
@@ -99,9 +98,15 @@ def test_wheel_controller_name_mismatch_rejected() -> None:
 def test_press_1_produces_negative_decaying_forward_command() -> None:
     teleop = PulseTeleop()
     teleop.press("1", 10.0)
-    assert teleop.command(10.0, forward_speed=0.5, yaw_rate=1.0, decay=1.0) == DriveCommand(-0.5, 0.0)
-    assert teleop.command(10.5, forward_speed=0.5, yaw_rate=1.0, decay=1.0) == DriveCommand(-0.25, 0.0)
-    assert teleop.command(11.0, forward_speed=0.5, yaw_rate=1.0, decay=1.0) == DriveCommand(0.0, 0.0)
+    assert teleop.command(10.0, forward_speed=0.5, yaw_rate=1.0, decay=1.0) == DriveCommand(
+        -0.5, 0.0
+    )
+    assert teleop.command(10.5, forward_speed=0.5, yaw_rate=1.0, decay=1.0) == DriveCommand(
+        -0.25, 0.0
+    )
+    assert teleop.command(11.0, forward_speed=0.5, yaw_rate=1.0, decay=1.0) == DriveCommand(
+        0.0, 0.0
+    )
 
 
 def test_press_2_reverses_forward_axis() -> None:
@@ -125,7 +130,9 @@ def test_repress_restarts_decay_window() -> None:
     teleop = PulseTeleop()
     teleop.press("1", 0.0)
     teleop.press("1", 10.0)
-    assert teleop.command(10.5, forward_speed=0.5, yaw_rate=1.0, decay=1.0).v_x == pytest.approx(-0.25)
+    assert teleop.command(10.5, forward_speed=0.5, yaw_rate=1.0, decay=1.0).v_x == pytest.approx(
+        -0.25
+    )
 
 
 def test_unpressed_is_zero() -> None:

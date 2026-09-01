@@ -3,8 +3,8 @@ import pytest
 
 mujoco = pytest.importorskip("mujoco")
 
-from ascento_dog.kinematics import DEFAULT_GEOMETRY
-from ascento_dog.simulation.mujoco_quadruped import (
+from ascento_dog.kinematics import DEFAULT_GEOMETRY  # noqa: E402
+from ascento_dog.simulation.mujoco_quadruped import (  # noqa: E402
     CHASSIS_SIZE,
     LEG_MOUNTS,
     expected_leg_points_in_chassis,
@@ -14,7 +14,7 @@ from ascento_dog.simulation.mujoco_quadruped import (
     set_quadruped_pose,
     wheel_bottom_heights,
 )
-from ascento_dog.simulation.mujoco_vmc import (
+from ascento_dog.simulation.mujoco_vmc import (  # noqa: E402
     apply_body_disturbance,
     create_default_vmc,
     read_vmc_state,
@@ -35,9 +35,7 @@ def test_quadruped_compiles_with_four_closed_loops_and_eight_actuators() -> None
 def test_quadruped_has_four_independent_wheel_joints() -> None:
     model, _ = load_quadruped_model()
     for leg_name in LEG_MOUNTS:
-        joint_id = mujoco.mj_name2id(
-            model, mujoco.mjtObj.mjOBJ_JOINT, f"{leg_name}_wheel_spin"
-        )
+        joint_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_JOINT, f"{leg_name}_wheel_spin")
         actuator_id = mujoco.mj_name2id(
             model, mujoco.mjtObj.mjOBJ_ACTUATOR, f"{leg_name}_wheel_motor"
         )
@@ -49,12 +47,8 @@ def test_quadruped_has_four_independent_wheel_joints() -> None:
 def test_wheels_have_ground_contact_and_hips_have_torque_motors() -> None:
     model, _ = load_quadruped_model()
     for leg_name in LEG_MOUNTS:
-        wheel_id = mujoco.mj_name2id(
-            model, mujoco.mjtObj.mjOBJ_GEOM, f"{leg_name}_wheel_geom"
-        )
-        hip_id = mujoco.mj_name2id(
-            model, mujoco.mjtObj.mjOBJ_ACTUATOR, f"{leg_name}_hip_motor"
-        )
+        wheel_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, f"{leg_name}_wheel_geom")
+        hip_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_ACTUATOR, f"{leg_name}_hip_motor")
         assert model.geom_contype[wheel_id] == 1
         assert model.geom_conaffinity[wheel_id] == 1
         assert hip_id >= 0
@@ -113,9 +107,7 @@ def test_vmc_tracks_height_and_recovers_from_attitude_disturbance() -> None:
             apply_body_disturbance(model, data)
         step_vmc(model, data, controller, desired_height=desired_height)
         state = read_vmc_state(model, data)
-        maximum_height_error = max(
-            maximum_height_error, abs(state.height - desired_height)
-        )
+        maximum_height_error = max(maximum_height_error, abs(state.height - desired_height))
         maximum_roll = max(maximum_roll, abs(state.roll))
         maximum_pitch = max(maximum_pitch, abs(state.pitch))
         assert np.all(np.isfinite(data.qpos))

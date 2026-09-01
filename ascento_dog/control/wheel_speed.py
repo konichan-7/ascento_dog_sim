@@ -12,9 +12,9 @@ All quantities are SI (m, rad, s).  No physics engine is imported here.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from threading import Lock
-from typing import Mapping
 
 import numpy as np
 
@@ -124,9 +124,7 @@ class WheelVelocityController:
                 )
             )
             unsaturated = self.gains.kp * error + self.gains.ki * candidate
-            output = float(
-                np.clip(unsaturated, -self.gains.output_limit, self.gains.output_limit)
-            )
+            output = float(np.clip(unsaturated, -self.gains.output_limit, self.gains.output_limit))
             drives_back = (unsaturated > output and error < 0.0) or (
                 unsaturated < output and error > 0.0
             )
@@ -190,9 +188,7 @@ class PulseTeleop:
             raise ValueError("forward_speed/yaw_rate must be nonnegative and decay positive")
         with self._lock:
             v_x = self._axis_value(self._vx_sign, self._vx_t0, t, forward_speed, decay)
-            omega_yaw = self._axis_value(
-                self._yaw_sign, self._yaw_t0, t, yaw_rate, decay
-            )
+            omega_yaw = self._axis_value(self._yaw_sign, self._yaw_t0, t, yaw_rate, decay)
         return DriveCommand(v_x=v_x, omega_yaw=omega_yaw)
 
     @staticmethod
