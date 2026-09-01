@@ -10,7 +10,7 @@
 4. 将目标总推力与姿态力矩分配为四条腿的竖直支撑力；
 5. 使用四连杆解析雅可比转置，将每条腿的虚拟力映射为髋关节力矩。
 
-当前框架只控制世界坐标系竖直力以及机体 roll/pitch，不控制水平速度、轮速或 yaw。仿真过程中由机体 IMU 传感器（`imu_quat` framequat）实时打印 yaw、pitch、roll，其中 yaw 用于观察耦合和漂移，不代表已经实现 yaw 闭环。控制器假设四个车轮均与地面接触；真实机器人后续还需要接触检测、状态估计、驱动器模型和安全状态机。
+当前框架只控制世界坐标系竖直力以及机体 roll/pitch，不控制水平速度、轮速或 yaw。仿真过程中由机体 IMU 传感器（`imu_quat` framequat）读取姿态，并叠加显示在 viewer 画面内，其中 yaw 用于观察耦合和漂移，不代表已经实现 yaw 闭环。控制器假设四个车轮均与地面接触；真实机器人后续还需要接触检测、状态估计、驱动器模型和安全状态机。
 
 ## 2. 坐标系、状态与符号
 
@@ -46,7 +46,7 @@ $$
 | VMC 控制器 | `ascento_dog/control/vmc.py` | 高度 PID、姿态 PD、受力分配、虚拟力到髋力矩 |
 | MuJoCo 适配 | `mujoco/simulation/mujoco_vmc.py` | 读取仿真状态、计算整车质心、写入力矩、施加扰动 |
 | 动力学模型 | `mujoco/quadruped.xml` | 重力、轮地接触、闭环腿、髋力矩执行器、机体 IMU 传感器 |
-| 可视化入口 | `ascento_dog/scripts/vmc.py` | 目标高度、三轴周期扰动、实时 Viewer 与 IMU 姿态打印 |
+| 可视化入口 | `ascento_dog/scripts/vmc.py` | 目标高度、三轴周期扰动、实时 Viewer、viewer 内 IMU 姿态叠加显示 |
 | 自动验证 | `tests/test_vmc.py`、`tests/test_mujoco_quadruped.py`、`tests/test_mujoco_drive.py` | 数学映射、限幅、稳态与动力学回归测试 |
 
 ### 3.2 信号流
@@ -100,7 +100,7 @@ flowchart LR
 10. 将 $f_i$ 映射为髋力矩 $\tau_i$ 并限幅；
 11. 将四个髋力矩写入 MuJoCo，车轮电机当前保持零输出；
 12. 执行一次 MuJoCo 动力学积分；
-13. 由机体 IMU 传感器读取姿态，约 5 Hz 节流实时打印 yaw、pitch、roll。
+13. 由机体 IMU 传感器读取姿态，约 10 Hz 叠加显示到 viewer 画面。
 
 ### 3.4 接口定义
 
@@ -108,7 +108,7 @@ flowchart LR
 | --- | --- |
 | 控制输入 | 目标高度、当前底盘状态、四个髋角、整车质心、模型质量 |
 | 控制输出 | 四个目标竖直支撑力、四个髋关节力矩 |
-| 监测输出 | IMU 实时 yaw/pitch/roll 打印（约 5 Hz） |
+| 监测输出 | viewer 内 IMU yaw/pitch/roll 叠加显示（约 10 Hz） |
 | 更新频率 | 当前为 1 kHz |
 | 力饱和 | 每腿 $0\le f_i\le120\ \mathrm{N}$ |
 | 力矩饱和 | 每髋 $|\tau_i|\le40\ \mathrm{N\,m}$ |
@@ -429,7 +429,7 @@ uv run vmc --height 0.37 --amplitude 0.03 --period 8 \
   --disturbance 45 --disturbance-period 4 --disturbance-duration 0.15
 ```
 
-默认演示持续 12 s，每 4 s 施加一次持续 0.15 s 的三轴扰动力矩 $(45,-30,5)$ N·m。仿真过程中由机体 IMU 传感器实时打印 yaw、pitch、roll（约 5 Hz），不再生成仿真后曲线。
+默认演示持续 12 s，每 4 s 施加一次持续 0.15 s 的三轴扰动力矩 $(45,-30,5)$ N·m。仿真过程中由机体 IMU 传感器读取姿态并叠加显示在 viewer 画面内（约 10 Hz），不再生成仿真后曲线。
 
 yaw 当前没有闭环控制，因此重复 yaw 扰动后可能存在残余偏角。macOS 会自动通过 `mjpython` 启动 Viewer。
 

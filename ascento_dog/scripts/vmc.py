@@ -1,11 +1,13 @@
-"""运行整车 VMC 演示;--teleop 用数字键 1/2/3/4 驱动,并实时打印 IMU 姿态。"""
+"""运行整车 VMC 演示;--teleop 用数字键 1/2/3/4 驱动,viewer 内叠加显示 IMU 姿态。"""
 
 from __future__ import annotations
 
 import argparse
+import threading
 import time
 from math import pi, sin
 
+import mujoco
 import numpy as np
 
 from ascento_dog.control import PulseTeleop, WheelSpeedGains, WheelVelocityController
@@ -20,6 +22,8 @@ from ascento_dog.simulation import (
     step_vmc,
 )
 from ascento_dog.simulation.viewer import ensure_mjpython_on_macos
+
+_ESC_KEYCODE = 256  # GLFW_KEY_ESCAPE
 
 
 def parse_args() -> argparse.Namespace:
@@ -61,32 +65,35 @@ def main() -> None:
     )
     teleop = PulseTeleop() if args.teleop else None
     simulation_start = float(data.time)
-    last_print = -10.0
+    last_overlay = -10.0
 
     if args.headless:
         while data.time - simulation_start < args.duration:
-            last_print = _step(
+            last_overlay = _step(
                 model, data, controller, args, simulation_start,
-                teleop, wheel_controller, last_print,
+                teleop, wheel_controller, last_overlay, viewer=None,
             )
     else:
         _run_with_viewer(
             model, data, controller, args, simulation_start,
-            teleop, wheel_controller, last_print,
+            teleop, wheel_controller, last_overlay,
         )
 
 
 def _run_with_viewer(
-    model, data, controller, args, simulation_start, teleop, wheel_controller, last_print
+    model, data, controller, args, simulation_start, teleop, wheel_controller, last_overlay
 ) -> None:
     import mujoco.viewer
 
-    key_callback = None
-    if teleop is not None:
-        def key_callback(keycode: int) -> None:
-            key = chr(keycode) if 32 <= keycode < 127 else ""
-            if key and key in "1234":
-                teleop.press(key, time.monotonic())
+    should_close = threading.Event()
+
+    def key_callback(keycode: int) -> None:
+        if keycode == _ESC_KEYCODE:
+            should_close.set()
+            return
+        key = chr(keycode) if 32 <= keycode < 127 else ""
+        if teleop is not None and key and key in "1234":
+            teleop.press(key, time.monotonic())
 
     # teleop 模式下隐藏左右 UI 面板,避免文本输入框抢键盘焦点与数字键遥杆冲突。
     show_ui = teleop is None
@@ -97,11 +104,15 @@ def _run_with_viewer(
         show_left_ui=show_ui,
         show_right_ui=show_ui,
     ) as viewer:
-        while viewer.is_running() and data.time - simulation_start < args.duration:
+        while (
+            viewer.is_running()
+            and not should_close.is_set()
+            and data.time - simulation_start < args.duration
+        ):
             step_start = time.monotonic()
-            last_print = _step(
+            last_overlay = _step(
                 model, data, controller, args, simulation_start,
-                teleop, wheel_controller, last_print,
+                teleop, wheel_controller, last_overlay, viewer,
             )
             viewer.sync()
             remaining = float(model.opt.timestep) - (time.monotonic() - step_start)
@@ -110,7 +121,7 @@ def _run_with_viewer(
 
 
 def _step(
-    model, data, controller, args, simulation_start, teleop, wheel_controller, last_print
+    model, data, controller, args, simulation_start, teleop, wheel_controller, last_overlay, viewer
 ) -> float:
     elapsed = float(data.time) - simulation_start
     if teleop is not None:
@@ -133,20 +144,24 @@ def _step(
         apply_body_disturbance(model, data, torque_world=torque_world)
         step_vmc(model, data, controller, desired_height=desired_height)
 
-    return _print_attitude(model, data, last_print)
+    return _update_attitude(model, data, viewer, last_overlay)
 
 
-def _print_attitude(model, data, last_print: float) -> float:
-    """约 5 Hz 节流打印 IMU yaw/pitch/roll(度),返回上次打印的仿真时刻。"""
+def _update_attitude(model, data, viewer, last_overlay: float) -> float:
+    """约 10 Hz 更新姿态:viewer 模式叠加到画面,headless 模式打印到终端。"""
 
-    if float(data.time) - last_print < 0.2:
-        return last_print
+    if float(data.time) - last_overlay < 0.1:
+        return last_overlay
     yaw, pitch, roll = read_imu_attitude(model, data)
-    print(
-        f"[imu] t={float(data.time):6.2f}s  yaw={np.rad2deg(yaw):7.1f}°  "
-        f"pitch={np.rad2deg(pitch):7.1f}°  roll={np.rad2deg(roll):7.1f}°",
-        flush=True,
+    line = (
+        f"yaw {np.rad2deg(yaw):7.1f}°  "
+        f"pitch {np.rad2deg(pitch):7.1f}°  "
+        f"roll {np.rad2deg(roll):7.1f}°"
     )
+    if viewer is not None:
+        viewer.set_texts([(None, mujoco.mjtGridPos.mjGRID_TOPLEFT, "IMU", line)])
+    else:
+        print(f"[imu] t={float(data.time):6.2f}s  {line}", flush=True)
     return float(data.time)
 
 

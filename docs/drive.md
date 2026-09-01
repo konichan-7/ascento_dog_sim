@@ -40,7 +40,8 @@ UI 面板,避免文本输入框抢键盘焦点。
     uv run vmc --teleop --forward-speed 0.5 --yaw-rate 1.0 --decay 1.0
 
 `--teleop` 需要 viewer(桌面 OpenGL),不能与 `--headless` 同时使用。仿真过程中由机体
-IMU 传感器(`imu_quat`)实时打印 yaw、pitch、roll,约 5 Hz。
+IMU 传感器(`imu_quat`)读取姿态,并叠加显示在 viewer 画面左上角(yaw/pitch/roll,约 10 Hz)。
+按 ESC 键结束程序并关闭 viewer。
 
 ## 复现验证
 
