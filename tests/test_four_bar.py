@@ -59,3 +59,15 @@ def test_working_path_is_near_vertical() -> None:
     horizontal_excursion = float(np.ptp(wheel_positions[:, 0]))
     assert vertical_travel > 0.30
     assert horizontal_excursion < 0.04
+
+
+@pytest.mark.parametrize("q", np.linspace(radians(-65), radians(-15), 11))
+def test_analytical_wheel_jacobian_matches_centered_difference(q: float) -> None:
+    geometry = DEFAULT_GEOMETRY
+    step = 1.0e-6
+    numerical = (
+        geometry.forward(float(q) + step, check_limits=False).e
+        - geometry.forward(float(q) - step, check_limits=False).e
+    ) / (2.0 * step)
+    analytical = geometry.wheel_jacobian(float(q))
+    assert analytical == pytest.approx(numerical, abs=2.0e-9)

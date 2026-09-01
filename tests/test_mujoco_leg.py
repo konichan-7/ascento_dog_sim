@@ -20,6 +20,20 @@ def test_mjcf_compiles_as_a_free_closed_loop() -> None:
     assert model.nu == 1
 
 
+def test_model_has_floor_but_leg_contact_remains_disabled() -> None:
+    model, _ = load_single_leg_model()
+    floor_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "floor")
+    wheel_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "wheel")
+
+    assert floor_id >= 0
+    assert model.geom_type[floor_id] == mujoco.mjtGeom.mjGEOM_PLANE
+    assert model.geom_pos[floor_id] == pytest.approx([0.0, 0.0, 0.0])
+    assert model.geom_contype[floor_id] == 1
+    assert model.geom_conaffinity[floor_id] == 1
+    assert model.geom_contype[wheel_id] == 0
+    assert model.geom_conaffinity[wheel_id] == 0
+
+
 @pytest.mark.parametrize(
     "q",
     [DEFAULT_GEOMETRY.q_min, DEFAULT_GEOMETRY.q_nominal, DEFAULT_GEOMETRY.q_max],

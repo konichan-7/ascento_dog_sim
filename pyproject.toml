@@ -9,6 +9,7 @@ description = "MuJoCo simulation and control foundations for an Ascento-style fo
 readme = "README.md"
 requires-python = ">=3.11,<3.15"
 dependencies = [
+  "matplotlib>=3.8,<4",
   "mujoco>=3.3,<4",
   "numpy>=2,<3",
 ]
@@ -19,11 +20,11 @@ dev = [
 ]
 
 [project.scripts]
-verify-leg-kinematics = "ascento_dog.scripts.verify_kinematics:main"
-view-single-leg = "ascento_dog.scripts.view_single_leg:main"
+leg-kinematics = "ascento_dog.scripts.leg_kinematics:main"
+vmc = "ascento_dog.scripts.vmc:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ascento_dog"]
+packages = ["ascento_dog"]
 
 [tool.pytest.ini_options]
 addopts = "-ra"

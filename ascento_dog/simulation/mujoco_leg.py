@@ -10,7 +10,7 @@ from numpy.typing import NDArray
 
 from ascento_dog.kinematics import DEFAULT_GEOMETRY, FourBarGeometry, LegPose
 
-MODEL_PATH = Path(__file__).resolve().parents[3] / "models" / "mujoco" / "single_leg.xml"
+MODEL_PATH = Path(__file__).resolve().parents[2] / "mujoco" / "single_leg.xml"
 
 
 @dataclass(frozen=True)

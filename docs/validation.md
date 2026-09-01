@@ -1,41 +1,89 @@
-# Single-leg validation record
+# 单腿验证记录
 
-Date: 2026-09-01
+日期：2026-09-01
 
-## Configuration
+## 验证配置
 
-- Python: 3.12 (managed by `uv`)
-- MuJoCo: locked by `uv.lock`
-- Analytical sweep: 101 evenly spaced hip angles from -65 degrees to -15 degrees
-- MuJoCo root: free joint
-- Gravity and contact: disabled for linkage-isolation testing
+- Python：3.12，由 `uv` 管理。
+- MuJoCo：版本由 `uv.lock` 锁定。
+- 解析扫描：在 -65° 至 -15° 之间均匀选取 101 个髋关节角度。
+- MuJoCo 根节点：自由关节。
+- 重力与腿部接触：关闭，以便隔离验证连杆机构；场景保留 `z=0` 可视化地板。
 
-## Reproduction commands
+## 复现命令
 
 ```bash
 uv sync --dev
 uv run pytest -q
-uv run verify-leg-kinematics --samples 101
 ```
 
-## Results
+## 验证结果
 
-```text
-94 passed
-samples: 101
-hip range: [-65.000, -15.000] deg
-wheel z range: [-0.433653, -0.111206] m
-wheel x excursion: 1.352260e-02 m
-max bar residual: 8.604228e-16 m
-max IK(FK(q)) error: 4.440892e-15 rad
-max MuJoCo point error: 2.581179e-11 m
-max MuJoCo loop error: 5.117076e-11 m
-```
+| 指标 | 结果 |
+| --- | ---: |
+| 测试数量 | 125 项全部通过 |
+| 采样数量 | 101 |
+| 髋关节范围 | `[-65.000, -15.000] deg` |
+| 轮心 z 坐标范围 | `[-0.433653, -0.111206] m` |
+| 轮心 x 方向总偏移 | `1.352260e-02 m` |
+| 最大杆长残差 | `8.604228e-16 m` |
+| 最大 `IK(FK(q))` 误差 | `4.440892e-15 rad` |
+| 最大 MuJoCo 点位误差 | `2.581179e-11 m` |
+| 最大 MuJoCo 闭环误差 | `5.117076e-11 m` |
 
-The wheel center travels 0.322447 m vertically while its total x excursion is 0.013523 m over the provisional working interval. This confirms the intended near-vertical, rather than perfectly vertical, path.
+在暂定工作区间内，轮心的竖直行程为 0.322447 m，x 方向总偏移为 0.013523 m。这表明轮心轨迹符合近似竖直而非绝对竖直的设计目标。
 
-The dynamic smoke test commands the hip actuator by +15 degrees for 1000 MuJoCo steps with the base still free. It checks finite state, actuator convergence, a transient loop error below 1 mm, and a final loop error below 1 micrometer.
+单腿动态冒烟测试在基座保持自由的情况下，向髋关节位置执行器发送 +15° 指令并运行 1000 个 MuJoCo 仿真步。测试检查状态是否保持有限、执行器是否收敛、瞬态闭环误差是否小于 1 mm，以及最终闭环误差是否小于 1 μm。
 
-## Interpretation and limitations
+## 结果解释与局限
 
-These results validate linkage geometry, branch selection, inverse/forward consistency, MJCF transform mapping, and equality-loop closure. They do not validate mass distribution, torque demand, spring behavior, actuator bandwidth, impact, tire contact, or whole-robot stability. The current visual geom density, link thicknesses, damping, armature, actuator gain, force limit, and wheel radius are explicit placeholders until CAD or measured parameters are supplied.
+上述结果验证了连杆几何、支路选择、正逆运动学一致性、MJCF 变换映射和等式约束闭合。它们尚未验证质量分布、力矩需求、弹簧行为、执行器带宽、冲击、轮地接触或整机稳定性。在获得 CAD 数据或实测参数前，当前模型中的可视化几何体密度、杆件厚度、阻尼、转子惯量、执行器增益、力限幅和轮半径均为明确标注的占位参数。
+
+## 四轮足整机几何验证
+
+完整机器人使用 101 个同步髋关节角度进行扫描。每个采样点都检查四条腿的 A–E 点位、四个闭环约束以及四个轮子的最低点与地板高度。
+
+整车几何扫描由 `tests/test_mujoco_quadruped.py` 自动执行。
+
+| 指标 | 结果 |
+| --- | ---: |
+| 腿数量 | 4 |
+| 闭环数量 | 4 |
+| 执行器数量 | 8 |
+| 最大解析点位与 MuJoCo 点位误差 | `2.581183e-11 m` |
+| 最大闭环误差 | `5.117076e-11 m` |
+| 最大轮地高度误差 | `7.353423e-13 m` |
+
+上述结果验证了四条腿的装配变换和同步姿态映射。
+
+## VMC 动力学验证
+
+VMC 动力学集成测试在重力和四轮接触下先稳定于 0.37 m，2 s 时将目标高度阶跃到 0.41 m，并在 4.00–4.12 s 向机体施加 `(roll, pitch)=(30, -20) N·m` 扰动力矩。
+
+| 指标 | 结果 |
+| --- | ---: |
+| 当前示意模型总质量 | 20.649425 kg |
+| 最终目标高度 | 0.4100 m |
+| 最终底盘高度 | 0.4143 m |
+| 最终高度误差 | +0.004307 m |
+| 全程最大高度误差 | 0.027054 m |
+| 最大 roll | 3.313° |
+| 最大 pitch | 2.352° |
+| 8 s 时最终 roll/pitch | `-0.000° / +0.031°` |
+
+该结果验证了当前示意模型中的重力补偿、高度改变和有限扰动恢复。它不构成真实机器人稳定性证明；CAD 质量惯量、轮胎参数和执行器数据更新后必须重新整定与验证。
+
+## 强扰动姿态曲线
+
+`uv run vmc --headless --no-show` 使用 4 s 周期、0.15 s 持续时间和 `(roll, pitch, yaw)=(45,-30,5) N·m` 三轴脉冲。12 s 默认演示结果为：
+
+| 指标 | 结果 |
+| --- | ---: |
+| 最大 roll | 19.392° |
+| 最大 pitch | 11.070° |
+| 最大 yaw | 6.401° |
+| 最终 roll | -0.0004° |
+| 最终 pitch | +0.0211° |
+| 最终 yaw | +6.3965° |
+
+roll/pitch 由 VMC 恢复到零附近；yaw 因当前没有闭环控制而保留残余偏角。脚本会将完整曲线和扰动标记保存为 CSV、PDF 与 PNG。

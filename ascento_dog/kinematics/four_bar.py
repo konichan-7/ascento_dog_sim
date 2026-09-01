@@ -192,14 +192,39 @@ class FourBarGeometry:
                 lo, f_lo = mid, f_mid
         return 0.5 * (lo + hi)
 
-    def wheel_jacobian(self, q: float, *, step: float = 1.0e-6) -> Vector2:
-        """Return ``dE/dq`` in meters per radian using a centered difference."""
+    def wheel_jacobian(self, q: float, *, singular_tolerance: float = 1.0e-12) -> Vector2:
+        """Return the analytical wheel Jacobian ``dE/dq`` in m/rad.
 
-        if step <= 0.0:
-            raise ValueError("step must be positive")
-        if not self.q_min + step <= q <= self.q_max - step:
-            raise UnreachableTargetError("q must be at least one finite-difference step from a limit")
-        return (self.forward(q + step).e - self.forward(q - step).e) / (2.0 * step)
+        The derivative is obtained by implicit differentiation of the two
+        circle-closure constraints, not by numerical differencing.  The result
+        is expressed in the A-fixed sagittal ``(x, z)`` frame on the selected
+        assembly branch.
+
+        Raises:
+            UnreachableTargetError: If the linkage is at a kinematic
+                singularity or ``q`` is outside the working interval.
+        """
+
+        if singular_tolerance <= 0.0:
+            raise ValueError("singular_tolerance must be positive")
+        pose = self.forward(q)
+        d_dot = self.l2 * np.array([-sin(q), cos(q)], dtype=float)
+
+        # Differentiating ||C-B||^2=L3^2 and ||C-D||^2=L23^2 gives
+        # [(C-B)^T; (C-D)^T] C' = [0; (C-D)^T D'].
+        closure_matrix = np.vstack((pose.c - pose.b, pose.c - pose.d))
+        determinant = float(np.linalg.det(closure_matrix))
+        if abs(determinant) <= singular_tolerance:
+            raise UnreachableTargetError(
+                f"linkage is singular at hip angle {q:.9g} rad"
+            )
+        right_hand_side = np.array(
+            [0.0, float(np.dot(pose.c - pose.d, d_dot))], dtype=float
+        )
+        c_dot = np.linalg.solve(closure_matrix, right_hand_side)
+
+        ratio = self.l1 / self.l23
+        return (1.0 + ratio) * d_dot - ratio * c_dot
 
     def bar_residuals(self, pose: LegPose) -> dict[str, float]:
         """Return signed bar-length residuals in meters for a computed pose."""
