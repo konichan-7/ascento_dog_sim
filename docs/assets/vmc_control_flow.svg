@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="880" viewBox="0 0 1500 880" role="img" aria-labelledby="title desc">
+  <title id="title">Ascento Dog VMC 完整闭环控制框图</title>
+  <desc id="desc">高度目标经 PID 与重力前馈形成总支撑力，姿态 PD 形成横滚俯仰力矩，支持力解算分配到四腿，再通过解析雅可比转置生成髋力矩并作用于机器人。</desc>
+  <defs>
+    <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#52616f"/></marker>
+    <style>.title{font:700 24px Arial,sans-serif;fill:#17212b}.h{font:650 18px Arial,sans-serif;fill:#17212b}.s{font:15px Arial,sans-serif;fill:#34495e}.box{stroke-width:2.5;rx:14}.line{stroke:#52616f;stroke-width:3;fill:none;marker-end:url(#arr)}.feedback{stroke:#7b8791;stroke-width:2.5;stroke-dasharray:8 6;fill:none;marker-end:url(#arr)}</style>
+  </defs>
+  <rect width="1500" height="880" fill="#fbfcfe"/>
+  <text x="750" y="42" text-anchor="middle" class="title">四轮足 VMC：从目标底盘广义力到四个髋力矩</text>
+
+  <rect x="35" y="100" width="190" height="100" class="box" fill="#fff3d8" stroke="#d69b2d"/>
+  <text x="130" y="136" text-anchor="middle" class="h">高度目标</text><text x="130" y="170" text-anchor="middle" class="s">h*，当前 h、ḣ</text>
+  <rect x="275" y="85" width="230" height="130" class="box" fill="#e8f2fb" stroke="#397bb5"/>
+  <text x="390" y="122" text-anchor="middle" class="h">底盘高度 PID</text><text x="390" y="153" text-anchor="middle" class="s">Kp(h*−h)+Ki∫e dt−Kd ḣ</text><text x="390" y="183" text-anchor="middle" class="s">积分限幅 + 条件抗饱和</text>
+  <rect x="275" y="260" width="230" height="95" class="box" fill="#e9f7ef" stroke="#3d9663"/>
+  <text x="390" y="296" text-anchor="middle" class="h">重力前馈</text><text x="390" y="328" text-anchor="middle" class="s">Fg = M g（M 从模型读取）</text>
+  <circle cx="565" cy="220" r="28" fill="#fff" stroke="#52616f" stroke-width="3"/><text x="565" y="228" text-anchor="middle" class="title">Σ</text>
+  <text x="550" y="177" class="s">Fz*=max(0,Fg+FPID)</text>
+
+  <rect x="35" y="435" width="190" height="110" class="box" fill="#fff3d8" stroke="#d69b2d"/>
+  <text x="130" y="470" text-anchor="middle" class="h">姿态目标</text><text x="130" y="501" text-anchor="middle" class="s">roll*=pitch*=0</text><text x="130" y="528" text-anchor="middle" class="s">当前 φ、θ、ωx、ωy</text>
+  <rect x="275" y="425" width="230" height="130" class="box" fill="#f3eafb" stroke="#8a5bb5"/>
+  <text x="390" y="462" text-anchor="middle" class="h">roll / pitch PD</text><text x="390" y="494" text-anchor="middle" class="s">τx*=−Kpφ φ−Kdφ ωx</text><text x="390" y="526" text-anchor="middle" class="s">τy*=−Kpθ θ−Kdθ ωy</text>
+
+  <rect x="650" y="155" width="245" height="220" class="box" fill="#eef2f6" stroke="#52616f"/>
+  <text x="772" y="194" text-anchor="middle" class="h">目标机体广义力</text>
+  <text x="772" y="236" text-anchor="middle" class="s">w* = [ Fz*, τx*, τy* ]ᵀ</text>
+  <line x1="685" y1="260" x2="860" y2="260" stroke="#a7b1ba"/>
+  <text x="772" y="298" text-anchor="middle" class="s">仅世界竖直支持力</text>
+  <text x="772" y="329" text-anchor="middle" class="s">yaw 当前不闭环</text>
+
+  <rect x="650" y="455" width="245" height="145" class="box" fill="#edf8f8" stroke="#3d8f93"/>
+  <text x="772" y="492" text-anchor="middle" class="h">实时几何</text><text x="772" y="523" text-anchor="middle" class="s">FK(qᵢ) → 轮心 rᵢᴮ</text><text x="772" y="554" text-anchor="middle" class="s">RWB、RBL、整车 COM</text><text x="772" y="580" text-anchor="middle" class="s">构建 A(q,R,COM)</text>
+
+  <rect x="970" y="165" width="255" height="220" class="box" fill="#e9f7ef" stroke="#3d9663"/>
+  <text x="1097" y="204" text-anchor="middle" class="h">四腿支持力解算</text><text x="1097" y="240" text-anchor="middle" class="s">Af ≈ w*</text><text x="1097" y="275" text-anchor="middle" class="s">0 ≤ fᵢ ≤ fᵢ,max</text><text x="1097" y="310" text-anchor="middle" class="s">81 组有效集穷举</text><text x="1097" y="345" text-anchor="middle" class="s">输出 f 与残差 Af−w*</text>
+
+  <rect x="970" y="475" width="255" height="135" class="box" fill="#fcecea" stroke="#cf5b50"/>
+  <text x="1097" y="512" text-anchor="middle" class="h">单腿解析映射</text><text x="1097" y="546" text-anchor="middle" class="s">Jᵢ(qᵢ)=∂Eᵢ/∂qᵢ</text><text x="1097" y="579" text-anchor="middle" class="s">τᵢ=−fᵢ eᵀz RWB RBL jᵢ</text>
+
+  <rect x="1280" y="305" width="185" height="105" class="box" fill="#fff3d8" stroke="#d69b2d"/>
+  <text x="1372" y="342" text-anchor="middle" class="h">髋力矩限幅</text><text x="1372" y="376" text-anchor="middle" class="s">|τᵢ| ≤ 40 N·m</text>
+  <rect x="1255" y="520" width="220" height="125" class="box" fill="#e8f2fb" stroke="#397bb5"/>
+  <text x="1365" y="558" text-anchor="middle" class="h">MuJoCo / 实机</text><text x="1365" y="590" text-anchor="middle" class="s">闭环腿 + 轮地接触</text><text x="1365" y="620" text-anchor="middle" class="s">1 ms 控制周期</text>
+
+  <path d="M225 150 H275" class="line"/><path d="M505 150 H565 V192" class="line"/><path d="M505 307 H565 V248" class="line"/>
+  <path d="M593 220 H650" class="line"/><path d="M225 490 H275" class="line"/><path d="M505 490 H590 V330 H650" class="line"/>
+  <path d="M895 265 H970" class="line"/><path d="M895 527 H930 V340 H970" class="line"/><path d="M895 527 H970" class="line"/>
+  <path d="M1097 385 V475" class="line"/><path d="M1225 542 H1250 V357 H1280" class="line"/><path d="M1372 410 V520" class="line"/>
+
+  <path d="M1365 645 V785 H130 V545" class="feedback"/>
+  <path d="M1365 755 H15 V150 H35" class="feedback"/>
+  <path d="M1365 720 H390 V555" class="feedback"/>
+  <path d="M1365 680 H772 V600" class="feedback"/>
+  <text x="740" y="812" text-anchor="middle" class="s">状态反馈：底盘位姿/速度、IMU、四个髋角、轮心与整车质心</text>
+
+  <rect x="35" y="690" width="355" height="82" rx="12" fill="#f6f7f9" stroke="#9aa6b2" stroke-width="2"/>
+  <text x="212" y="720" text-anchor="middle" class="h">可选水平驱动（--teleop）</text><text x="212" y="749" text-anchor="middle" class="s">(vx*, ωyaw*) → 四轮目标转速 → 独立 PI → 轮力矩</text>
+</svg>

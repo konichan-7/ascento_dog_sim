@@ -1,30 +1,31 @@
 """Phased step-crossing control for the four-wheeled, four-legged robot.
 
-The controller drives the robot forward onto a raised platform while
-keeping the chassis level (pitch target 0) throughout the whole maneuver.
-The legs do the climbing: during both climb phases the climbing axle's
-legs are joint-space position-servoed on a scheduled wheel lift height,
-dragging the wheels up the riser face with the aid of wheel-against-riser
-rolling friction, while the supporting axle's legs are position-frozen so
-the chassis pose (height and pitch) is pinned by geometry.  Stance phases
-use vertical-force allocation mapped to hip torques by the analytical
-Jacobian transpose.
+The controller drives the robot forward onto a raised platform and targets
+a level chassis.  Most phases use a pitch target of 0; the rear climb uses
+symmetric joint targets and geometric locking instead of active pitch PD.
+The front climb keeps all legs in VMC force control but caps the front-leg
+support force so wheel-against-riser rolling friction can lift the front
+axle.  The rear climb switches all legs to joint-space position control:
+the front legs lock at their shortest pose while the rear legs follow a
+scheduled lift target.  The other phases use bounded vertical-force
+allocation mapped to hip torques by the analytical Jacobian transpose.
 
 Phases (world +x is the travel direction, the riser faces -x):
 
 1. ``APPROACH``    all legs stance; level body at ``stance_height``
    (= step top + wheel radius + shortest-leg drop, i.e. the nominal
    q=-40 deg stance on flat ground); drive toward the riser.
-2. ``FRONT_CLIMB`` front wheels press the riser; the front legs retract
-   toward their shortest length on a lift schedule, dragging the wheels up
-   the face while they roll onto the platform edge; the rear legs are
-   position-frozen and carry the chassis.  Body stays level.
+2. ``FRONT_CLIMB`` all legs remain in VMC force control; the front-leg
+   force cap reduces downward load while wheel drive and riser friction
+   lift the front wheels.  The front legs retract naturally as the wheels
+   rise.  Body stays level.
 3. ``STRADDLE``    front wheels on the platform, front legs shortest,
    rear legs stance; body level; drive until the rear wheels touch the
    riser.
 4. ``REAR_CLIMB``  front legs hold shortest (position), rear legs retract
    on the lift schedule, dragging the rear wheels up the face; the front
-   wheels drive/press on the platform.  Body stays level.
+   wheels drive/press on the platform.  Symmetric targets and geometric
+   locking are intended to keep the body level without active pitch PD.
 5. ``EXTEND``      all four wheels on the platform; chassis height ramps
    from the low stance to the nominal stance above the platform (all four
    legs extend synchronously).
@@ -193,11 +194,11 @@ class StepCrossingController:
     world observations and hip joint rates, and produces hip and wheel
     torques for one simulation step.
 
-    Stance support uses vertical-force allocation mapped to hip torques by
-    the analytical Jacobian transpose.  The two climb phases switch all
-    four legs to joint-space position control (the climbing axle follows a
-    scheduled wheel lift height, the supporting axle is frozen), which pins
-    the chassis pose geometrically and drags the wheels up the riser face.
+    Stance support and the front climb use vertical-force allocation mapped
+    to hip torques by the analytical Jacobian transpose.  Only the rear
+    climb switches all four legs to joint-space position control: the front
+    axle locks at minimum leg length and the rear axle follows a scheduled
+    wheel lift height.
     """
 
     def __init__(
@@ -422,7 +423,7 @@ class StepCrossingController:
     ) -> tuple[float, float, tuple[float, float]]:
         """Return ``(height_target, pitch_target, (front_speed, rear_speed))``.
 
-        除 EXTEND 高度斜坡外，车身全程保持水平（pitch 目标 0）。
+        本辅助函数处理的阶段均返回 pitch 目标 0；REAR_CLIMB 走独立位置伺服分支。
         """
 
         p = self.parameters

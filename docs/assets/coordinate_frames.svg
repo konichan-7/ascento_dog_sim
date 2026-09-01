@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="620" viewBox="0 0 1100 620" role="img" aria-labelledby="title desc">
+  <title id="title">Ascento Dog 整车坐标系与四腿安装方向</title>
+  <desc id="desc">机器人俯视图。机体系 x 轴向前、y 轴向左，四条腿的解析 x 轴均指向机体后方，前后腿不镜像。</desc>
+  <defs>
+    <marker id="arrow-red" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#d24a43"/></marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#2774ae"/></marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#238b57"/></marker>
+    <style>
+      .label{font:600 20px Arial,sans-serif;fill:#1f2937}.small{font:16px Arial,sans-serif;fill:#374151}.leg{fill:#eef2f7;stroke:#34495e;stroke-width:3}.mount{fill:#f8b84e;stroke:#8c5a00;stroke-width:2}.dash{stroke:#6b7280;stroke-width:2;stroke-dasharray:7 7}.local{stroke:#238b57;stroke-width:4;marker-end:url(#arrow-green)}
+    </style>
+  </defs>
+  <rect width="1100" height="620" fill="#fbfcfe"/>
+  <text x="550" y="42" text-anchor="middle" class="label">整车俯视：世界系 W、机体系 B 与四个同向腿系 Lᵢ</text>
+
+  <rect x="320" y="135" width="460" height="330" rx="28" fill="#dfe7ef" stroke="#263746" stroke-width="4"/>
+  <path d="M780 300 L845 255 L845 345 Z" fill="#dfe7ef" stroke="#263746" stroke-width="4"/>
+  <line x1="550" y1="135" x2="550" y2="465" class="dash"/>
+  <line x1="320" y1="300" x2="780" y2="300" class="dash"/>
+  <text x="550" y="287" text-anchor="middle" class="label">机体 B</text>
+  <text x="818" y="236" class="small">前方</text>
+
+  <g>
+    <rect x="710" y="95" width="88" height="74" rx="12" class="leg"/><circle cx="735" cy="169" r="10" class="mount"/><text x="754" y="123" text-anchor="middle" class="small">FL</text>
+    <rect x="710" y="451" width="88" height="74" rx="12" class="leg"/><circle cx="735" cy="451" r="10" class="mount"/><text x="754" y="500" text-anchor="middle" class="small">FR</text>
+    <rect x="302" y="95" width="88" height="74" rx="12" class="leg"/><circle cx="365" cy="169" r="10" class="mount"/><text x="346" y="123" text-anchor="middle" class="small">RL</text>
+    <rect x="302" y="451" width="88" height="74" rx="12" class="leg"/><circle cx="365" cy="451" r="10" class="mount"/><text x="346" y="500" text-anchor="middle" class="small">RR</text>
+  </g>
+
+  <line x1="735" y1="169" x2="655" y2="169" class="local"/><text x="625" y="161" class="small">+x<tspan baseline-shift="sub">L</tspan></text>
+  <line x1="735" y1="451" x2="655" y2="451" class="local"/><text x="625" y="443" class="small">+x<tspan baseline-shift="sub">L</tspan></text>
+  <line x1="365" y1="169" x2="285" y2="169" class="local"/><text x="255" y="161" class="small">+x<tspan baseline-shift="sub">L</tspan></text>
+  <line x1="365" y1="451" x2="285" y2="451" class="local"/><text x="255" y="443" class="small">+x<tspan baseline-shift="sub">L</tspan></text>
+
+  <line x1="550" y1="300" x2="700" y2="300" stroke="#d24a43" stroke-width="5" marker-end="url(#arrow-red)"/>
+  <text x="710" y="294" class="label" fill="#d24a43">+x<tspan baseline-shift="sub">B</tspan></text>
+  <line x1="550" y1="300" x2="550" y2="150" stroke="#2774ae" stroke-width="5" marker-end="url(#arrow-blue)"/>
+  <text x="561" y="143" class="label" fill="#2774ae">+y<tspan baseline-shift="sub">B</tspan></text>
+  <circle cx="550" cy="300" r="15" fill="none" stroke="#8b5cf6" stroke-width="4"/><circle cx="550" cy="300" r="5" fill="#8b5cf6"/>
+  <text x="571" y="326" class="small">+z<tspan baseline-shift="sub">B</tspan>（出图面）</text>
+
+  <g transform="translate(70 500)">
+    <text x="0" y="-60" class="label">世界系 W</text>
+    <line x1="0" y1="0" x2="110" y2="0" stroke="#d24a43" stroke-width="4" marker-end="url(#arrow-red)"/><text x="120" y="6" class="small">+x<tspan baseline-shift="sub">W</tspan></text>
+    <line x1="0" y1="0" x2="0" y2="-85" stroke="#2774ae" stroke-width="4" marker-end="url(#arrow-blue)"/><text x="10" y="-90" class="small">+y<tspan baseline-shift="sub">W</tspan></text>
+    <circle cx="0" cy="0" r="11" fill="none" stroke="#8b5cf6" stroke-width="3"/><circle cx="0" cy="0" r="4" fill="#8b5cf6"/>
+  </g>
+
+  <rect x="820" y="410" width="245" height="135" rx="14" fill="#fff7e6" stroke="#d89b2b" stroke-width="2"/>
+  <text x="942" y="445" text-anchor="middle" class="label">安装约定</text>
+  <text x="842" y="478" class="small">R<tspan baseline-shift="sub">BL</tspan> = R<tspan baseline-shift="sub">z</tspan>(π)</text>
+  <text x="842" y="507" class="small">= diag(−1, −1, 1)</text>
+  <text x="842" y="536" class="small">四腿同向，后腿不镜像</text>
+</svg>

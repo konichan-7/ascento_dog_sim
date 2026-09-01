@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="620" viewBox="0 0 1000 620" role="img" aria-labelledby="title desc">
+  <title id="title">Ascento 单腿闭环连杆坐标与符号</title>
+  <desc id="desc">单腿在解析 x-z 矢状面中的 A、B、C、D、E 五点、五个杆长、主动角 q、固定角 gamma 和选定装配支路。</desc>
+  <defs>
+    <marker id="axis" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#263746"/></marker>
+    <style>.t{font:600 20px Arial,sans-serif;fill:#1f2937}.s{font:17px Arial,sans-serif;fill:#374151}.bar{stroke-width:12;stroke-linecap:round}.node{stroke:#fff;stroke-width:4}.guide{stroke:#9ca3af;stroke-width:2;stroke-dasharray:7 6}</style>
+  </defs>
+  <rect width="1000" height="620" fill="#fbfcfe"/>
+  <text x="500" y="42" text-anchor="middle" class="t">单腿解析系 L：q = −40° 示例姿态</text>
+
+  <line x1="120" y1="190" x2="540" y2="190" stroke="#263746" stroke-width="3" marker-end="url(#axis)"/>
+  <line x1="120" y1="190" x2="120" y2="65" stroke="#263746" stroke-width="3" marker-end="url(#axis)"/>
+  <text x="550" y="197" class="t">+x<tspan baseline-shift="sub">L</tspan></text>
+  <text x="132" y="70" class="t">+z<tspan baseline-shift="sub">L</tspan></text>
+  <line x1="120" y1="190" x2="245" y2="65" class="guide"/>
+
+  <line x1="120" y1="190" x2="230" y2="80" class="bar" stroke="#f2b84b"/>
+  <line x1="120" y1="190" x2="385" y2="360" class="bar" stroke="#df5b4f"/>
+  <line x1="230" y1="80" x2="465" y2="320" class="bar" stroke="#397bb5"/>
+  <line x1="385" y1="360" x2="465" y2="320" class="bar" stroke="#49a36d"/>
+  <line x1="385" y1="360" x2="124" y2="545" class="bar" stroke="#49a36d"/>
+
+  <g fill="#263746">
+    <circle cx="120" cy="190" r="12" class="node"/><circle cx="230" cy="80" r="12" class="node"/><circle cx="465" cy="320" r="12" class="node"/><circle cx="385" cy="360" r="12" class="node"/><circle cx="124" cy="545" r="14" class="node"/>
+  </g>
+  <circle cx="124" cy="545" r="38" fill="none" stroke="#20252b" stroke-width="8"/>
+  <text x="91" y="178" class="t">A</text><text x="235" y="68" class="t">B</text><text x="480" y="315" class="t">C</text><text x="395" y="384" class="t">D</text><text x="75" y="552" class="t">E</text>
+
+  <text x="145" y="110" class="s">L₄ = AB</text>
+  <text x="245" y="260" class="s">L₂ = AD</text>
+  <text x="365" y="175" class="s">L₃ = BC</text>
+  <text x="435" y="365" class="s">L₂₃ = CD</text>
+  <text x="220" y="470" class="s">L₁ = DE</text>
+
+  <path d="M190 190 A70 70 0 0 1 169 239" fill="none" stroke="#d24a43" stroke-width="4"/>
+  <text x="187" y="238" class="t" fill="#d24a43">q</text>
+  <path d="M170 190 A50 50 0 0 0 155 155" fill="none" stroke="#996c16" stroke-width="4"/>
+  <text x="172" y="158" class="s">γ=45°</text>
+
+  <rect x="585" y="90" width="360" height="420" rx="18" fill="#f3f6f9" stroke="#8aa0b3" stroke-width="2"/>
+  <text x="765" y="130" text-anchor="middle" class="t">几何真值与支路</text>
+  <text x="620" y="175" class="s">L₁ = 0.23500 m</text>
+  <text x="620" y="210" class="s">L₂ = 0.23800 m</text>
+  <text x="620" y="245" class="s">L₃ = 0.24400 m</text>
+  <text x="620" y="280" class="s">L₄ = 0.10889 m</text>
+  <text x="620" y="315" class="s">L₂₃ = 0.05700 m</text>
+  <line x1="620" y1="340" x2="910" y2="340" stroke="#b6c2cc"/>
+  <text x="620" y="380" class="s">C、D、E 共线，D 位于中间</text>
+  <text x="620" y="420" class="s">−65° ≤ q ≤ −15°</text>
+  <text x="620" y="460" class="s">cross(D−B, C−D) &gt; 0</text>
+  <text x="620" y="495" class="s">轮心轨迹是一维曲线</text>
+
+  <text x="500" y="592" text-anchor="middle" class="s">示意图按标称姿态近似缩放；公式和代码均使用国际单位制。</text>
+</svg>

@@ -5,7 +5,7 @@ The module provides four independent pieces:
 - ``TeleopCommand``: a two-degree-of-freedom chassis-frame teleop command.
 - ``wheel_speed_targets``: maps a teleop command to per-wheel angular speeds.
 - ``WheelVelocityController``: a per-wheel PI speed controller with anti-windup.
-- ``PulseTeleop``: latches W/A/S/D presses into linearly-decaying commands.
+- ``PulseTeleop``: latches 1/2/3/4 key presses into linearly-decaying commands.
 
 All quantities are SI (m, rad, s).  No physics engine is imported here.
 """
