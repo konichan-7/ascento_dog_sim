@@ -37,11 +37,11 @@ UI 面板,避免文本输入框抢键盘焦点。
 ## 使用
 
     uv run vmc --teleop
-    uv run vmc --teleop --forward-speed 0.5 --yaw-rate 1.0 --decay 1.0
+    uv run vmc --teleop --forward-speed 1.0 --yaw-rate 2.0 --decay 1.0
 
-`--teleop` 需要 viewer(桌面 OpenGL),不能与 `--headless` 同时使用。仿真过程中由机体
-IMU 传感器(`imu_quat`)读取姿态,并叠加显示在 viewer 画面左上角(yaw/pitch/roll,约 10 Hz)。
-按 ESC 键结束程序并关闭 viewer。
+`--teleop` 需要 viewer(桌面 OpenGL),不能与 `--headless` 同时使用。按数字键 1/2/3/4
+驱动(1前 2后 3左 4右),按 ESC 键结束程序并关闭 viewer。`--forward-speed`(默认 1.0 m/s)
+与 `--yaw-rate`(默认 2.0 rad/s)为脉冲幅值,可按需调大调小。
 
 ## 复现验证
 

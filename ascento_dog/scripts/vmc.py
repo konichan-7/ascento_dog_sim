@@ -1,4 +1,4 @@
-"""运行整车 VMC 演示;--teleop 用数字键 1/2/3/4 驱动,viewer 内叠加显示 IMU 姿态。"""
+"""运行整车 VMC 演示;--teleop 用数字键 1/2/3/4 驱动,ESC 退出。"""
 
 from __future__ import annotations
 
@@ -7,16 +7,12 @@ import threading
 import time
 from math import pi, sin
 
-import mujoco
-import numpy as np
-
 from ascento_dog.control import PulseTeleop, WheelSpeedGains, WheelVelocityController
 from ascento_dog.kinematics import DEFAULT_GEOMETRY
 from ascento_dog.simulation import (
     apply_body_disturbance,
     create_default_vmc,
     load_quadruped_model,
-    read_imu_attitude,
     set_quadruped_pose,
     step_drive,
     step_vmc,
@@ -39,8 +35,8 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--headless", action="store_true", help="不打开 MuJoCo Viewer")
     parser.add_argument("--teleop", action="store_true", help="启用键盘遥杆(1前 2后 3左 4右)")
-    parser.add_argument("--forward-speed", type=float, default=0.5, help="前进/后退脉冲幅值, m/s")
-    parser.add_argument("--yaw-rate", type=float, default=1.0, help="转向脉冲幅值, rad/s")
+    parser.add_argument("--forward-speed", type=float, default=1.0, help="前进/后退脉冲幅值, m/s")
+    parser.add_argument("--yaw-rate", type=float, default=2.0, help="转向脉冲幅值, rad/s")
     parser.add_argument("--decay", type=float, default=1.0, help="脉冲线性衰减时长, s")
     return parser.parse_args()
 
@@ -65,23 +61,16 @@ def main() -> None:
     )
     teleop = PulseTeleop() if args.teleop else None
     simulation_start = float(data.time)
-    last_overlay = -10.0
 
     if args.headless:
         while data.time - simulation_start < args.duration:
-            last_overlay = _step(
-                model, data, controller, args, simulation_start,
-                teleop, wheel_controller, last_overlay, viewer=None,
-            )
+            _step(model, data, controller, args, simulation_start, teleop, wheel_controller)
     else:
-        _run_with_viewer(
-            model, data, controller, args, simulation_start,
-            teleop, wheel_controller, last_overlay,
-        )
+        _run_with_viewer(model, data, controller, args, simulation_start, teleop, wheel_controller)
 
 
 def _run_with_viewer(
-    model, data, controller, args, simulation_start, teleop, wheel_controller, last_overlay
+    model, data, controller, args, simulation_start, teleop, wheel_controller
 ) -> None:
     import mujoco.viewer
 
@@ -110,19 +99,14 @@ def _run_with_viewer(
             and data.time - simulation_start < args.duration
         ):
             step_start = time.monotonic()
-            last_overlay = _step(
-                model, data, controller, args, simulation_start,
-                teleop, wheel_controller, last_overlay, viewer,
-            )
+            _step(model, data, controller, args, simulation_start, teleop, wheel_controller)
             viewer.sync()
             remaining = float(model.opt.timestep) - (time.monotonic() - step_start)
             if remaining > 0.0:
                 time.sleep(remaining)
 
 
-def _step(
-    model, data, controller, args, simulation_start, teleop, wheel_controller, last_overlay, viewer
-) -> float:
+def _step(model, data, controller, args, simulation_start, teleop, wheel_controller) -> None:
     elapsed = float(data.time) - simulation_start
     if teleop is not None:
         command = teleop.command(
@@ -143,26 +127,6 @@ def _step(
         torque_world = (magnitude, -(2.0 / 3.0) * magnitude, magnitude / 9.0)
         apply_body_disturbance(model, data, torque_world=torque_world)
         step_vmc(model, data, controller, desired_height=desired_height)
-
-    return _update_attitude(model, data, viewer, last_overlay)
-
-
-def _update_attitude(model, data, viewer, last_overlay: float) -> float:
-    """约 10 Hz 更新姿态:viewer 模式叠加到画面,headless 模式打印到终端。"""
-
-    if float(data.time) - last_overlay < 0.1:
-        return last_overlay
-    yaw, pitch, roll = read_imu_attitude(model, data)
-    line = (
-        f"yaw {np.rad2deg(yaw):7.1f}°  "
-        f"pitch {np.rad2deg(pitch):7.1f}°  "
-        f"roll {np.rad2deg(roll):7.1f}°"
-    )
-    if viewer is not None:
-        viewer.set_texts([(None, mujoco.mjtGridPos.mjGRID_TOPLEFT, "IMU", line)])
-    else:
-        print(f"[imu] t={float(data.time):6.2f}s  {line}", flush=True)
-    return float(data.time)
 
 
 def _validate_args(args: argparse.Namespace) -> None:

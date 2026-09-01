@@ -69,7 +69,7 @@
 
 ### 控制层
 
-`ascento_dog/control/` 与 MuJoCo 解耦。当前 VMC 使用解析雅可比转置将腿部虚拟力映射为髋力矩，并包含整车重力补偿、底盘高度 PID、roll/pitch 姿态 PD、有界四腿受力分配、积分抗饱和和髋力矩限幅。yaw 当前不进入闭环控制，姿态由机体 IMU 传感器读取并叠加显示在 viewer 画面内。`ascento_dog/control/wheel_speed.py` 提供与 MuJoCo 解耦的轮速 PI 与驱动运动学；`vmc --teleop` 提供键盘遥杆（数字键 1/2/3/4：前进/后退/左转/右转，ESC 退出）。
+`ascento_dog/control/` 与 MuJoCo 解耦。当前 VMC 使用解析雅可比转置将腿部虚拟力映射为髋力矩，并包含整车重力补偿、底盘高度 PID、roll/pitch 姿态 PD、有界四腿受力分配、积分抗饱和和髋力矩限幅。yaw 当前不进入闭环控制。`ascento_dog/control/wheel_speed.py` 提供与 MuJoCo 解耦的轮速 PI 与驱动运动学；`vmc --teleop` 提供键盘遥杆（数字键 1/2/3/4：前进/后退/左转/右转，ESC 退出）。
 
 ### 验证层
 
