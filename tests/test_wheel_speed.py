@@ -43,6 +43,11 @@ def test_invalid_radius_rejected() -> None:
         wheel_speed_targets(DriveCommand(0.0, 0.0), 0.0, MOUNTS_Y)
 
 
+def test_non_finite_command_rejected() -> None:
+    with pytest.raises(ValueError):
+        wheel_speed_targets(DriveCommand(float("nan"), 0.0), WHEEL_RADIUS, MOUNTS_Y)
+
+
 def test_proportional_torque_from_speed_error() -> None:
     controller = WheelVelocityController(WheelSpeedGains(kp=2.0, ki=0.0))
     out = controller.update({"w": 5.0}, {"w": 1.0}, 0.01)
@@ -52,6 +57,11 @@ def test_proportional_torque_from_speed_error() -> None:
 def test_output_clamped_to_limit() -> None:
     controller = WheelVelocityController(WheelSpeedGains(kp=2.0, ki=0.0, output_limit=5.0))
     assert controller.update({"w": 100.0}, {"w": 0.0}, 0.01)["w"] == pytest.approx(5.0)
+
+
+def test_nan_gain_limits_rejected() -> None:
+    with pytest.raises(ValueError):
+        WheelSpeedGains(1.0, 0.0, integral_limit=float("nan"))
 
 
 def test_integral_clamped_and_reduced_on_reversal() -> None:
@@ -64,6 +74,20 @@ def test_integral_clamped_and_reduced_on_reversal() -> None:
     assert controller.integral["w"] == pytest.approx(1.0)
     controller.update({"w": 0.0}, {"w": 1.0}, 0.01)
     assert controller.integral["w"] < 1.0
+
+
+def test_anti_windup_freezes_integral_at_output_boundary() -> None:
+    controller = WheelVelocityController(
+        WheelSpeedGains(kp=0.0, ki=0.5, integral_limit=100.0, output_limit=5.0)
+    )
+    for _ in range(2000):
+        controller.update({"w": 100.0}, {"w": 0.0}, 0.01)
+    # integral must stop at the saturation boundary (5.0 / 0.5 = 10), not the integral_limit
+    assert controller.integral["w"] == pytest.approx(10.0)
+    assert controller.update({"w": 100.0}, {"w": 0.0}, 0.01)["w"] == pytest.approx(5.0)
+    # reversing the error unwinds the integral
+    controller.update({"w": 0.0}, {"w": 100.0}, 0.01)
+    assert controller.integral["w"] < 10.0
 
 
 def test_wheel_controller_name_mismatch_rejected() -> None:
@@ -107,3 +131,9 @@ def test_repress_restarts_decay_window() -> None:
 def test_unpressed_is_zero() -> None:
     teleop = PulseTeleop()
     assert teleop.command(0.0, forward_speed=0.5, yaw_rate=1.0, decay=1.0) == DriveCommand(0.0, 0.0)
+
+
+def test_non_finite_teleop_inputs_rejected() -> None:
+    teleop = PulseTeleop()
+    with pytest.raises(ValueError):
+        teleop.command(float("nan"), forward_speed=0.5, yaw_rate=1.0, decay=1.0)

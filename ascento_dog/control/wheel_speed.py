@@ -1,6 +1,6 @@
 """Wheel-speed drive control for the four-wheeled robot, independent of MuJoCo.
 
-The module provides three independent pieces:
+The module provides four independent pieces:
 
 - ``DriveCommand``: a two-degree-of-freedom chassis-frame drive command.
 - ``wheel_speed_targets``: maps a drive command to per-wheel angular speeds.
@@ -47,6 +47,8 @@ def wheel_speed_targets(
     radius = float(wheel_radius)
     if not np.isfinite(radius) or radius <= 0.0:
         raise ValueError("wheel_radius must be finite and positive")
+    if not np.isfinite(command.v_x) or not np.isfinite(command.omega_yaw):
+        raise ValueError("drive command must be finite")
     if not mounts_y:
         raise ValueError("mounts_y must not be empty")
     targets: dict[str, float] = {}
@@ -75,6 +77,8 @@ class WheelSpeedGains:
         for value in (self.kp, self.ki):
             if not np.isfinite(value) or value < 0.0:
                 raise ValueError("wheel-speed PI gains must be finite and nonnegative")
+        if np.isnan(self.integral_limit) or np.isnan(self.output_limit):
+            raise ValueError("wheel-speed PI limits may not be NaN")
         if self.integral_limit <= 0.0 or self.output_limit <= 0.0:
             raise ValueError("wheel-speed PI limits must be positive")
 
@@ -151,6 +155,8 @@ class PulseTeleop:
     def press(self, key: str, t: float) -> None:
         """Record a direction press for the given axis at wall time ``t``."""
 
+        if not np.isfinite(t):
+            raise ValueError("press time must be finite")
         with self._lock:
             if key == "W":
                 self._vx_sign, self._vx_t0 = 1.0, t
@@ -171,6 +177,9 @@ class PulseTeleop:
     ) -> DriveCommand:
         """Return the drive command at wall time ``t`` after linear decay."""
 
+        values = (forward_speed, yaw_rate, decay, t)
+        if any(not np.isfinite(value) for value in values):
+            raise ValueError("teleop command inputs must be finite")
         if forward_speed < 0.0 or yaw_rate < 0.0 or decay <= 0.0:
             raise ValueError("forward_speed/yaw_rate must be nonnegative and decay positive")
         with self._lock:

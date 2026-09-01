@@ -39,6 +39,8 @@ class PIDGains:
         values = (self.kp, self.ki, self.kd)
         if any(not np.isfinite(value) or value < 0.0 for value in values):
             raise ValueError("PID gains must be finite and nonnegative")
+        if np.isnan(self.integral_limit) or np.isnan(self.output_limit):
+            raise ValueError("PID limits may not be NaN")
         if self.integral_limit <= 0.0 or self.output_limit <= 0.0:
             raise ValueError("PID limits must be positive")
 
