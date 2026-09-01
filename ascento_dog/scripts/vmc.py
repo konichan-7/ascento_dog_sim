@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import threading
 import time
 from math import pi, sin
 
@@ -17,9 +16,7 @@ from ascento_dog.simulation import (
     step_teleop,
     step_vmc,
 )
-from ascento_dog.simulation.viewer import ensure_mjpython_on_macos
-
-_ESC_KEYCODE = 256  # GLFW_KEY_ESCAPE
+from ascento_dog.simulation.viewer import ensure_mjpython_on_macos, make_esc_exit_callback
 
 
 def parse_args() -> argparse.Namespace:
@@ -69,11 +66,11 @@ def _run_with_viewer(
 ) -> None:
     import mujoco.viewer
 
-    should_close = threading.Event()
+    should_close, esc_callback = make_esc_exit_callback()
 
     def key_callback(keycode: int) -> None:
-        if keycode == _ESC_KEYCODE:
-            should_close.set()
+        esc_callback(keycode)
+        if should_close.is_set():
             return
         key = chr(keycode) if 32 <= keycode < 127 else ""
         if teleop is not None and key and key in "1234":

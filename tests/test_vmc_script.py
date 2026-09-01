@@ -3,6 +3,7 @@ import argparse
 import pytest
 
 from ascento_dog.scripts import vmc
+from ascento_dog.simulation.viewer import make_esc_exit_callback
 
 
 def _args(**overrides: object) -> argparse.Namespace:
@@ -36,3 +37,17 @@ def test_valid_teleop_args_pass() -> None:
 def test_teleop_ignores_amplitude_in_height_check() -> None:
     # teleop 不走高度正弦,幅值即使超出非 teleop 的叠加范围也不应报错。
     vmc._validate_args(_args(teleop=True, amplitude=0.2))
+
+
+def test_esc_callback_sets_close_event() -> None:
+    should_close, key_callback = make_esc_exit_callback()
+    assert not should_close.is_set()
+    key_callback(256)  # ESC (GLFW_KEY_ESCAPE)
+    assert should_close.is_set()
+
+
+def test_esc_callback_ignores_non_esc_keys() -> None:
+    should_close, key_callback = make_esc_exit_callback()
+    key_callback(ord("1"))
+    key_callback(ord("W"))
+    assert not should_close.is_set()

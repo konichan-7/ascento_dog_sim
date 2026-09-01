@@ -235,4 +235,4 @@ uv run pytest
 uv run leg-kinematics
 ```
 
-`pytest` 覆盖五个杆长残差、装配支路、(IK(FK(q)))、解析雅可比、MuJoCo 的 A—E 站点误差和闭环约束误差；`leg-kinematics` 只负责显示单腿悬空运动。动力学中的虚功与力矩映射见 `docs/vmc.md`。
+`pytest` 覆盖五个杆长残差、装配支路、(IK(FK(q)))、解析雅可比、MuJoCo 的 A—E 站点误差和闭环约束误差；`leg-kinematics` 只负责显示单腿悬空运动，按 ESC 或关闭窗口退出。动力学中的虚功与力矩映射见 `docs/vmc.md`。

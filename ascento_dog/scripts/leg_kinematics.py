@@ -8,7 +8,7 @@ from math import pi, sin
 
 from ascento_dog.kinematics import DEFAULT_GEOMETRY
 from ascento_dog.simulation import load_single_leg_model, set_kinematic_pose
-from ascento_dog.simulation.viewer import ensure_mjpython_on_macos
+from ascento_dog.simulation.viewer import ensure_mjpython_on_macos, make_esc_exit_callback
 
 
 def parse_args() -> argparse.Namespace:
@@ -29,8 +29,9 @@ def main() -> None:
     midpoint = 0.5 * (DEFAULT_GEOMETRY.q_min + DEFAULT_GEOMETRY.q_max)
     amplitude = 0.5 * (DEFAULT_GEOMETRY.q_max - DEFAULT_GEOMETRY.q_min)
     start = time.monotonic()
-    with mujoco.viewer.launch_passive(model, data) as viewer:
-        while viewer.is_running():
+    should_close, key_callback = make_esc_exit_callback()
+    with mujoco.viewer.launch_passive(model, data, key_callback=key_callback) as viewer:
+        while viewer.is_running() and not should_close.is_set():
             elapsed = time.monotonic() - start
             q = midpoint + amplitude * sin(2.0 * pi * elapsed / args.period)
             set_kinematic_pose(model, data, q)
