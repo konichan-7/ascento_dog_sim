@@ -1,0 +1,41 @@
+import numpy as np
+import pytest
+
+mujoco = pytest.importorskip("mujoco")
+
+from ascento_dog.control import DriveCommand, WheelSpeedGains, WheelVelocityController
+from ascento_dog.kinematics import DEFAULT_GEOMETRY
+from ascento_dog.simulation import (
+    create_default_vmc,
+    load_quadruped_model,
+    read_vmc_state,
+    set_quadruped_pose,
+    step_drive,
+)
+
+
+def _chassis_x(model, data) -> float:
+    chassis_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "chassis")
+    return float(data.xpos[chassis_id, 0])
+
+
+def test_forward_command_translates_the_robot_forward() -> None:
+    model, data = load_quadruped_model()
+    set_quadruped_pose(model, data, DEFAULT_GEOMETRY.q_nominal, wheels_on_floor=True)
+    controller = create_default_vmc(model)
+    wheel_controller = WheelVelocityController(
+        WheelSpeedGains(kp=0.5, ki=0.2, integral_limit=3.0, output_limit=10.0)
+    )
+    start_x = _chassis_x(model, data)
+    command = DriveCommand(v_x=0.5, omega_yaw=0.0)
+
+    while data.time < 3.0:
+        step_drive(model, data, controller, wheel_controller, command, desired_height=0.37)
+        assert np.all(np.isfinite(data.qpos))
+        assert np.all(np.isfinite(data.qvel))
+
+    traveled = _chassis_x(model, data) - start_x
+    assert traveled > 0.2
+    state = read_vmc_state(model, data)
+    assert abs(state.roll) < np.deg2rad(5.0)
+    assert abs(state.pitch) < np.deg2rad(5.0)

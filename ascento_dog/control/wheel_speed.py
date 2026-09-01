@@ -39,9 +39,9 @@ def wheel_speed_targets(
     """Map a drive command to per-wheel target angular velocities (rad/s).
 
     Each wheel rolls only along the chassis +x axis.  The wheel-centre linear
-    speed is ``v_x - omega_yaw * y`` (translation plus yaw lever arm).  Positive
-    forward rolling requires negative spin about the +y wheel axis, so
-    ``omega_wheel = -(v_x - omega_yaw*y) / R``.
+    speed is ``v_x - omega_yaw * y`` (translation plus yaw lever arm).  In this
+    model a wheel that spins positively about its +y axis rolls forward, so
+    ``omega_wheel = (v_x - omega_yaw*y) / R``.
     """
 
     radius = float(wheel_radius)
@@ -56,7 +56,7 @@ def wheel_speed_targets(
         y_value = float(y)
         if not np.isfinite(y_value):
             raise ValueError(f"mount y for {name!r} must be finite")
-        targets[name] = -(command.v_x - command.omega_yaw * y_value) / radius
+        targets[name] = (command.v_x - command.omega_yaw * y_value) / radius
     return targets
 
 

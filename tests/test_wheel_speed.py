@@ -20,22 +20,22 @@ MOUNTS_Y = {
 
 def test_forward_speed_spins_all_wheels_equally() -> None:
     targets = wheel_speed_targets(DriveCommand(v_x=0.5, omega_yaw=0.0), WHEEL_RADIUS, MOUNTS_Y)
-    expected = -0.5 / WHEEL_RADIUS
+    expected = 0.5 / WHEEL_RADIUS
     for name in MOUNTS_Y:
         assert targets[name] == pytest.approx(expected)
 
 
 def test_pure_yaw_spins_left_and_right_wheels_oppositely() -> None:
     targets = wheel_speed_targets(DriveCommand(v_x=0.0, omega_yaw=1.0), WHEEL_RADIUS, MOUNTS_Y)
-    assert targets["front_left"] == pytest.approx(1.0 * 0.20 / WHEEL_RADIUS)
-    assert targets["front_right"] == pytest.approx(-1.0 * 0.20 / WHEEL_RADIUS)
+    assert targets["front_left"] == pytest.approx(-1.0 * 0.20 / WHEEL_RADIUS)
+    assert targets["front_right"] == pytest.approx(1.0 * 0.20 / WHEEL_RADIUS)
     assert targets["front_left"] == pytest.approx(-targets["front_right"])
 
 
 def test_combined_command_is_linear_superposition() -> None:
     targets = wheel_speed_targets(DriveCommand(v_x=0.5, omega_yaw=1.0), WHEEL_RADIUS, MOUNTS_Y)
-    assert targets["front_left"] == pytest.approx(-(0.5 - 1.0 * 0.20) / WHEEL_RADIUS)
-    assert targets["rear_right"] == pytest.approx(-(0.5 - 1.0 * (-0.20)) / WHEEL_RADIUS)
+    assert targets["front_left"] == pytest.approx((0.5 - 1.0 * 0.20) / WHEEL_RADIUS)
+    assert targets["rear_right"] == pytest.approx((0.5 - 1.0 * (-0.20)) / WHEEL_RADIUS)
 
 
 def test_invalid_radius_rejected() -> None:

@@ -15,8 +15,11 @@ from ascento_dog.simulation.mujoco_vmc import (
     DefaultVMCParameters,
     apply_body_disturbance,
     apply_vmc_command,
+    apply_wheel_command,
     create_default_vmc,
     read_vmc_state,
+    read_wheel_velocities,
+    step_drive,
     step_vmc,
     yaw_pitch_roll_from_rotation,
 )
@@ -32,8 +35,11 @@ __all__ = [
     "DefaultVMCParameters",
     "apply_body_disturbance",
     "apply_vmc_command",
+    "apply_wheel_command",
     "create_default_vmc",
     "read_vmc_state",
+    "read_wheel_velocities",
+    "step_drive",
     "step_vmc",
     "yaw_pitch_roll_from_rotation",
 ]

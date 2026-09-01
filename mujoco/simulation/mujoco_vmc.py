@@ -9,15 +9,18 @@ import numpy as np
 
 from ascento_dog.control import (
     AttitudeGains,
+    DriveCommand,
     HeightPID,
     LegMount as ControlLegMount,
     PIDGains,
     QuadrupedVMC,
     VMCCommand,
     VMCState,
+    WheelVelocityController,
+    wheel_speed_targets,
 )
 from ascento_dog.kinematics import DEFAULT_GEOMETRY
-from ascento_dog.simulation.mujoco_quadruped import LEG_MOUNTS
+from ascento_dog.simulation.mujoco_quadruped import LEG_MOUNTS, WHEEL_RADIUS
 
 
 @dataclass(frozen=True)
@@ -171,3 +174,62 @@ def yaw_pitch_roll_from_rotation(rotation: np.ndarray) -> tuple[float, float, fl
     roll = atan2(float(rotation[2, 1]), float(rotation[2, 2]))
     yaw = atan2(float(rotation[1, 0]), float(rotation[0, 0]))
     return yaw, pitch, roll
+
+
+def read_wheel_velocities(model, data) -> dict[str, float]:
+    """Read each wheel's spin angular velocity in rad/s."""
+
+    import mujoco
+
+    velocities: dict[str, float] = {}
+    for name in LEG_MOUNTS:
+        joint_id = mujoco.mj_name2id(
+            model, mujoco.mjtObj.mjOBJ_JOINT, f"{name}_wheel_spin"
+        )
+        if joint_id < 0:
+            raise KeyError(f"wheel spin joint for {name!r} not found")
+        velocities[name] = float(data.qvel[model.jnt_dofadr[joint_id]])
+    return velocities
+
+
+def apply_wheel_command(model, data, wheel_torques: dict[str, float]) -> None:
+    """Write per-wheel motor torques to MuJoCo, leaving hips untouched."""
+
+    import mujoco
+
+    for name, torque in wheel_torques.items():
+        actuator_id = mujoco.mj_name2id(
+            model, mujoco.mjtObj.mjOBJ_ACTUATOR, f"{name}_wheel_motor"
+        )
+        if actuator_id < 0:
+            raise KeyError(f"wheel actuator for {name!r} not found")
+        data.ctrl[actuator_id] = torque
+
+
+def step_drive(
+    model,
+    data,
+    controller: QuadrupedVMC,
+    wheel_controller: WheelVelocityController,
+    command: DriveCommand,
+    *,
+    desired_height: float,
+) -> VMCCommand:
+    """Compute and apply one VMC + wheel-drive command, then step MuJoCo."""
+
+    import mujoco
+
+    state = read_vmc_state(model, data)
+    hip_command = controller.compute(
+        state, desired_height=desired_height, dt=float(model.opt.timestep)
+    )
+    mounts_y = {name: mount.position[1] for name, mount in LEG_MOUNTS.items()}
+    targets = wheel_speed_targets(command, WHEEL_RADIUS, mounts_y)
+    measured = read_wheel_velocities(model, data)
+    wheel_torques = wheel_controller.update(
+        targets, measured, dt=float(model.opt.timestep)
+    )
+    apply_vmc_command(model, data, hip_command)
+    apply_wheel_command(model, data, wheel_torques)
+    mujoco.mj_step(model, data)
+    return hip_command
