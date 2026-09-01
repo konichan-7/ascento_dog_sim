@@ -1,0 +1,72 @@
+<mujoco model="ascento_single_floating_leg">
+  <compiler angle="radian" inertiafromgeom="true" balanceinertia="true"/>
+  <option timestep="0.002" gravity="0 0 0" integrator="implicitfast"/>
+
+  <visual>
+    <global azimuth="90" elevation="0"/>
+    <scale jointlength="0.035" jointwidth="0.008"/>
+  </visual>
+
+  <default>
+    <joint axis="0 -1 0" damping="0.05" armature="0.001"/>
+    <geom type="capsule" size="0.012" density="550" contype="0" conaffinity="0"/>
+    <site type="sphere" size="0.009" group="2"/>
+  </default>
+
+  <asset>
+    <material name="frame_mat" rgba="0.20 0.22 0.26 1"/>
+    <material name="driver_mat" rgba="0.91 0.31 0.24 1"/>
+    <material name="upper_mat" rgba="0.19 0.49 0.74 1"/>
+    <material name="lower_mat" rgba="0.23 0.68 0.45 1"/>
+    <material name="wheel_mat" rgba="0.08 0.09 0.11 1"/>
+  </asset>
+
+  <worldbody>
+    <light name="key" pos="0 -1.5 1.5" dir="0 1 -0.5"/>
+    <camera name="side" pos="0.05 -1.25 0.40" xyaxes="1 0 0 0 0 1"/>
+
+    <!-- Reference pose: analytical q = -40 deg. The root is deliberately free. -->
+    <body name="base" pos="0 0 0.5">
+      <freejoint name="floating_base"/>
+      <geom name="frame_AB" fromto="0 0 0 0.0769968574 0 0.0769968574"
+            size="0.014" material="frame_mat"/>
+      <geom name="hip_housing" type="cylinder" pos="0 0 0" size="0.037 0.020"
+            quat="0.7071067812 0.7071067812 0 0" material="frame_mat"/>
+      <site name="point_A" pos="0 0 0" rgba="1 0.3 0.2 1"/>
+      <site name="point_B" pos="0.0769968574 0 0.0769968574" rgba="1 0.8 0.1 1"/>
+
+      <body name="driver_AD" quat="0.9396926208 0 0.3420201433 0">
+        <joint name="hip_drive" range="-0.4363323130 0.4363323130"/>
+        <geom name="link_AD" fromto="0 0 0 0.238 0 0" material="driver_mat"/>
+        <site name="point_D" pos="0.238 0 0" rgba="1 0.3 0.2 1"/>
+
+        <body name="lower_DCE" pos="0.238 0 0"
+              quat="0.7655608359 0 -0.6433635104 0">
+          <joint name="inner_passive" range="-1.2 1.2"/>
+          <geom name="link_DCE" fromto="-0.235 0 0 0.057 0 0" material="lower_mat"/>
+          <site name="point_C_lower" pos="0.057 0 0" rgba="0.9 0.2 0.9 1"/>
+          <site name="point_E" pos="-0.235 0 0" rgba="0.2 1 0.4 1"/>
+          <geom name="wheel" type="cylinder" pos="-0.235 0 0" size="0.065 0.020"
+                quat="0.7071067812 0.7071067812 0 0" material="wheel_mat"/>
+        </body>
+      </body>
+
+      <body name="upper_BC" pos="0.0769968574 0 0.0769968574"
+            quat="0.8973219461 0 0.4413766249 0">
+        <joint name="pin_passive" range="-1.2 1.2"/>
+        <geom name="link_BC" fromto="0 0 0 0.244 0 0" material="upper_mat"/>
+        <site name="point_C_upper" pos="0.244 0 0" rgba="0.9 0.2 0.9 0.45"/>
+      </body>
+    </body>
+  </worldbody>
+
+  <equality>
+    <connect name="four_bar_closure" site1="point_C_lower" site2="point_C_upper"
+             solref="0.002 1" solimp="0.95 0.99 0.001"/>
+  </equality>
+
+  <actuator>
+    <position name="hip_position" joint="hip_drive" kp="80"
+              ctrlrange="-0.4363323130 0.4363323130" forcerange="-40 40"/>
+  </actuator>
+</mujoco>

@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ascento-dog-sim"
+version = "0.1.0"
+description = "MuJoCo simulation and control foundations for an Ascento-style four-wheeled legged robot"
+readme = "README.md"
+requires-python = ">=3.11,<3.15"
+dependencies = [
+  "mujoco>=3.3,<4",
+  "numpy>=2,<3",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8,<9",
+]
+
+[project.scripts]
+verify-leg-kinematics = "ascento_dog.scripts.verify_kinematics:main"
+view-single-leg = "ascento_dog.scripts.view_single_leg:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ascento_dog"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
