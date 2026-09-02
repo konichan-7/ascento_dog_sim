@@ -1,15 +1,84 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1450" height="520" viewBox="0 0 1450 520" role="img" aria-labelledby="title desc">
-  <title id="title">150 毫米上台阶状态机</title>
-  <desc id="desc">从接近、前轮爬升、跨坐、后轮爬升、同步伸展到完成的六阶段状态机，并标注每次转移的轮心位置与超时条件。</desc>
-  <defs><marker id="a" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#596775"/></marker><style>.h{font:700 18px Arial,sans-serif;fill:#18222c}.s{font:14px Arial,sans-serif;fill:#374151}.b{stroke-width:2.5;rx:16}.l{stroke:#596775;stroke-width:3;fill:none;marker-end:url(#a)}</style></defs>
-  <rect width="1450" height="520" fill="#fbfcfe"/><text x="725" y="42" text-anchor="middle" class="h">跨越 150 mm 台阶：混合力控 / 位置伺服状态机</text>
-  <rect x="25" y="165" width="190" height="145" class="b" fill="#e8f2fb" stroke="#397bb5"/><text x="120" y="203" text-anchor="middle" class="h">APPROACH</text><text x="120" y="236" text-anchor="middle" class="s">全腿 VMC 力控</text><text x="120" y="263" text-anchor="middle" class="s">低站姿、水平前进</text><text x="120" y="290" text-anchor="middle" class="s">四轮同速</text>
-  <rect x="265" y="145" width="200" height="185" class="b" fill="#fff3d8" stroke="#d69b2d"/><text x="365" y="183" text-anchor="middle" class="h">FRONT_CLIMB</text><text x="365" y="216" text-anchor="middle" class="s">全腿仍为 VMC 力控</text><text x="365" y="243" text-anchor="middle" class="s">前腿力帽 70 N</text><text x="365" y="270" text-anchor="middle" class="s">轮速 + 后轴顶压</text><text x="365" y="297" text-anchor="middle" class="s">立面滚动摩擦抬前轮</text>
-  <rect x="515" y="165" width="190" height="145" class="b" fill="#e9f7ef" stroke="#3d9663"/><text x="610" y="203" text-anchor="middle" class="h">STRADDLE</text><text x="610" y="236" text-anchor="middle" class="s">全腿 VMC 力控</text><text x="610" y="263" text-anchor="middle" class="s">前轮在台、后轮在地</text><text x="610" y="290" text-anchor="middle" class="s">保持低站姿推进</text>
-  <rect x="755" y="135" width="215" height="205" class="b" fill="#fcecea" stroke="#cf5b50"/><text x="862" y="173" text-anchor="middle" class="h">REAR_CLIMB</text><text x="862" y="206" text-anchor="middle" class="s">四腿切换位置伺服</text><text x="862" y="233" text-anchor="middle" class="s">前腿锁 qmax（最短）</text><text x="862" y="260" text-anchor="middle" class="s">后腿按 0.08 m/s 收缩</text><text x="862" y="287" text-anchor="middle" class="s">前轮低顶压、后轮自转</text><text x="862" y="314" text-anchor="middle" class="s">拖拽后轮越过立面</text>
-  <rect x="1020" y="165" width="190" height="145" class="b" fill="#f3eafb" stroke="#8a5bb5"/><text x="1115" y="203" text-anchor="middle" class="h">EXTEND</text><text x="1115" y="236" text-anchor="middle" class="s">恢复全腿 VMC</text><text x="1115" y="263" text-anchor="middle" class="s">1.5 s 高度斜坡</text><text x="1115" y="290" text-anchor="middle" class="s">四腿同步伸展</text>
-  <rect x="1260" y="165" width="165" height="145" class="b" fill="#eef2f6" stroke="#596775"/><text x="1342" y="203" text-anchor="middle" class="h">DONE</text><text x="1342" y="236" text-anchor="middle" class="s">台上标称高度</text><text x="1342" y="263" text-anchor="middle" class="s">roll/pitch = 0</text><text x="1342" y="290" text-anchor="middle" class="s">轮速归零并保持</text>
-  <path d="M215 237 H265" class="l"/><path d="M465 237 H515" class="l"/><path d="M705 237 H755" class="l"/><path d="M970 237 H1020" class="l"/><path d="M1210 237 H1260" class="l"/>
-  <text x="240" y="112" text-anchor="middle" class="s">前轮接近立面</text><text x="490" y="372" text-anchor="middle" class="s">前轮 x 越过边缘且 z 到达台面</text><text x="730" y="112" text-anchor="middle" class="s">后轮接近立面</text><text x="995" y="372" text-anchor="middle" class="s">后轮 x 越过边缘且 z 到达台面</text><text x="1235" y="112" text-anchor="middle" class="s">斜坡结束且高度误差 ≤ 0.02 m</text>
-  <rect x="225" y="420" width="1000" height="65" rx="12" fill="#fff8e8" stroke="#d69b2b" stroke-width="2"/><text x="725" y="447" text-anchor="middle" class="h">共同故障规则</text><text x="725" y="473" text-anchor="middle" class="s">任一阶段超过独立超时即 failed；腿名缺失或 dt≤0 直接拒绝；当前无统一观测校验、接触估计、撤退与在线重规划。</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="610" viewBox="0 0 1200 610" role="img" aria-labelledby="title desc">
+  <title id="title">跨越二百毫米台阶的六阶段状态机</title>
+  <desc id="desc">学术线稿风格的状态机。六个阶段依次为接近、前轮爬升、跨坐、后轮爬升、姿态恢复和完成；下方列出左右轮同时满足的转移条件与共同故障规则。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#111"/></marker>
+    <style>
+      .state{fill:#fff;stroke:#111;stroke-width:1.8}.flow{fill:none;stroke:#111;stroke-width:1.8;marker-end:url(#arrow)}.dash{fill:none;stroke:#555;stroke-width:1.4;stroke-dasharray:7 6}.rule{stroke:#aaa;stroke-width:1}.head{font:600 17px 'Times New Roman','STIX Two Text',serif;fill:#111}.cn{font:16px 'Songti SC','Noto Serif CJK SC',serif;fill:#111}.math{font:italic 18px 'Times New Roman','STIX Two Text',serif;fill:#111}.smallmath{font:italic 15px 'Times New Roman','STIX Two Text',serif;fill:#111}.note{font:15px 'Songti SC','Noto Serif CJK SC',serif;fill:#111}.num{font:italic 17px 'Times New Roman','STIX Two Text',serif;fill:#111}
+    </style>
+  </defs>
+  <rect width="1200" height="610" fill="#fff"/>
+
+  <text x="40" y="39" class="math">H<tspan baseline-shift="sub" font-size="12">s</tspan>=200 mm</text>
+  <text x="1160" y="39" text-anchor="end" class="note">VMC 力控 → 几何锁定与腿长伺服 → 台上姿态恢复</text>
+
+  <!-- states -->
+  <g>
+    <rect x="30" y="75" width="165" height="125" rx="3" class="state"/>
+    <text x="47" y="100" class="num">1</text><text x="112" y="118" text-anchor="middle" class="head">APPROACH</text>
+    <text x="112" y="151" text-anchor="middle" class="cn">四腿 VMC</text>
+    <text x="112" y="178" text-anchor="middle" class="smallmath">h*=h<tspan baseline-shift="sub" font-size="11">stance</tspan>, 0.25 m/s</text>
+
+    <rect x="225" y="75" width="165" height="125" rx="3" class="state"/>
+    <text x="242" y="100" class="num">2</text><text x="307" y="118" text-anchor="middle" class="head">FRONT_CLIMB</text>
+    <text x="307" y="151" text-anchor="middle" class="cn">前轮摩擦爬升</text>
+    <text x="307" y="178" text-anchor="middle" class="smallmath">f<tspan baseline-shift="sub" font-size="11">i,max</tspan>=70 N, i∈𝓕</text>
+
+    <rect x="420" y="75" width="165" height="125" rx="3" class="state"/>
+    <text x="437" y="100" class="num">3</text><text x="502" y="118" text-anchor="middle" class="head">STRADDLE</text>
+    <text x="502" y="151" text-anchor="middle" class="cn">前轮在台、后轮在地</text>
+    <text x="502" y="178" text-anchor="middle" class="cn">低站姿推进</text>
+
+    <rect x="615" y="75" width="165" height="125" rx="3" class="state"/>
+    <text x="632" y="100" class="num">4</text><text x="697" y="118" text-anchor="middle" class="head">REAR_CLIMB</text>
+    <text x="697" y="151" text-anchor="middle" class="cn">前腿锁定、后腿收缩</text>
+    <text x="697" y="178" text-anchor="middle" class="smallmath">dℓ*/dt=−0.16 m/s</text>
+
+    <rect x="810" y="75" width="165" height="125" rx="3" class="state"/>
+    <text x="827" y="100" class="num">5</text><text x="892" y="118" text-anchor="middle" class="head">EXTEND</text>
+    <text x="892" y="151" text-anchor="middle" class="cn">四轮停车</text>
+    <text x="892" y="178" text-anchor="middle" class="cn">1.5 s 髋角插值</text>
+
+    <rect x="1005" y="75" width="165" height="125" rx="3" class="state"/>
+    <text x="1022" y="100" class="num">6</text><text x="1087" y="118" text-anchor="middle" class="head">DONE</text>
+    <text x="1087" y="151" text-anchor="middle" class="cn">恢复四腿 VMC</text>
+    <text x="1087" y="178" text-anchor="middle" class="smallmath">h*=h<tspan baseline-shift="sub" font-size="11">extend</tspan></text>
+  </g>
+  <path d="M195 137H225" class="flow"/><path d="M390 137H420" class="flow"/><path d="M585 137H615" class="flow"/>
+  <path d="M780 137H810" class="flow"/><path d="M975 137H1005" class="flow"/>
+
+  <!-- transition guards -->
+  <line x1="30" y1="244" x2="1170" y2="244" class="rule"/>
+  <text x="30" y="277" class="cn">转移判据（左右轮均满足）</text>
+
+  <text x="45" y="320" class="smallmath">1 → 2</text>
+  <text x="45" y="351" class="smallmath">x<tspan baseline-shift="sub" font-size="11">front</tspan> ≥ x<tspan baseline-shift="sub" font-size="11">s</tspan>−R−m<tspan baseline-shift="sub" font-size="11">c</tspan></text>
+  <line x1="240" y1="300" x2="240" y2="383" class="rule"/>
+
+  <text x="270" y="320" class="smallmath">2 → 3</text>
+  <text x="270" y="351" class="smallmath">x<tspan baseline-shift="sub" font-size="11">front</tspan> ≥ x<tspan baseline-shift="sub" font-size="11">s</tspan>+m<tspan baseline-shift="sub" font-size="11">e</tspan></text>
+  <text x="270" y="378" class="smallmath">z<tspan baseline-shift="sub" font-size="11">front</tspan> ≥ H<tspan baseline-shift="sub" font-size="11">s</tspan>+R−m<tspan baseline-shift="sub" font-size="11">c</tspan></text>
+  <line x1="480" y1="300" x2="480" y2="383" class="rule"/>
+
+  <text x="510" y="320" class="smallmath">3 → 4</text>
+  <text x="510" y="351" class="smallmath">x<tspan baseline-shift="sub" font-size="11">rear</tspan> ≥ x<tspan baseline-shift="sub" font-size="11">s</tspan>−R−m<tspan baseline-shift="sub" font-size="11">c</tspan></text>
+  <line x1="705" y1="300" x2="705" y2="383" class="rule"/>
+
+  <text x="735" y="320" class="smallmath">4 → 5</text>
+  <text x="735" y="351" class="smallmath">x<tspan baseline-shift="sub" font-size="11">rear</tspan> ≥ x<tspan baseline-shift="sub" font-size="11">s</tspan>+m<tspan baseline-shift="sub" font-size="11">e</tspan></text>
+  <text x="735" y="378" class="smallmath">z<tspan baseline-shift="sub" font-size="11">rear</tspan> ≥ H<tspan baseline-shift="sub" font-size="11">s</tspan>+R−m<tspan baseline-shift="sub" font-size="11">c</tspan></text>
+  <line x1="945" y1="300" x2="945" y2="383" class="rule"/>
+
+  <text x="975" y="320" class="smallmath">5 → 6</text>
+  <text x="975" y="351" class="smallmath">|h−h<tspan baseline-shift="sub" font-size="11">extend</tspan>|≤0.02 m</text>
+  <text x="975" y="378" class="smallmath">|ϕ<tspan baseline-shift="sub" font-size="11">B</tspan>|, |ϑ<tspan baseline-shift="sub" font-size="11">B</tspan>|≤1°</text>
+
+  <!-- state-specific notes -->
+  <line x1="30" y1="424" x2="1170" y2="424" class="rule"/>
+  <text x="30" y="458" class="cn">关键处理</text>
+  <text x="45" y="493" class="note">FRONT_CLIMB：降低前腿支持力上限，保持姿态 VMC，利用轮—立面滚动摩擦。</text>
+  <text x="45" y="529" class="note">REAR_CLIMB：后腿目标按有效腿长单调收缩，避免世界高度反解与 pitch 耦合形成正反馈。</text>
+  <text x="45" y="565" class="note">EXTEND：轮速归零，关节角平滑插值并叠加解析重力前馈。</text>
+  <path d="M30 590H1170" class="dash"/>
+  <text x="600" y="607" text-anchor="middle" class="note">任一阶段超时即 failed；腿集合错误或 Δt≤0 直接拒绝；当前无在线接触估计与失败撤退。</text>
 </svg>
