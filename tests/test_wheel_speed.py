@@ -95,14 +95,14 @@ def test_wheel_controller_name_mismatch_rejected() -> None:
         controller.update({"a": 1.0}, {"b": 1.0}, 0.01)
 
 
-def test_press_1_produces_negative_decaying_forward_command() -> None:
+def test_press_1_produces_positive_decaying_forward_command() -> None:
     teleop = PulseTeleop()
     teleop.press("1", 10.0)
     assert teleop.command(10.0, forward_speed=0.5, yaw_rate=1.0, decay=1.0) == TeleopCommand(
-        -0.5, 0.0
+        0.5, 0.0
     )
     assert teleop.command(10.5, forward_speed=0.5, yaw_rate=1.0, decay=1.0) == TeleopCommand(
-        -0.25, 0.0
+        0.25, 0.0
     )
     assert teleop.command(11.0, forward_speed=0.5, yaw_rate=1.0, decay=1.0) == TeleopCommand(
         0.0, 0.0
@@ -113,7 +113,7 @@ def test_press_2_reverses_forward_axis() -> None:
     teleop = PulseTeleop()
     teleop.press("2", 0.0)
     command = teleop.command(0.0, forward_speed=0.5, yaw_rate=1.0, decay=1.0)
-    assert command.v_x == pytest.approx(0.5)
+    assert command.v_x == pytest.approx(-0.5)
     assert command.omega_yaw == pytest.approx(0.0)
 
 
@@ -122,7 +122,7 @@ def test_combined_1_3_both_axes() -> None:
     teleop.press("1", 0.0)
     teleop.press("3", 0.0)
     command = teleop.command(0.0, forward_speed=0.5, yaw_rate=1.0, decay=1.0)
-    assert command.v_x == pytest.approx(-0.5)
+    assert command.v_x == pytest.approx(0.5)
     assert command.omega_yaw == pytest.approx(1.0)
 
 
@@ -131,7 +131,7 @@ def test_repress_restarts_decay_window() -> None:
     teleop.press("1", 0.0)
     teleop.press("1", 10.0)
     assert teleop.command(10.5, forward_speed=0.5, yaw_rate=1.0, decay=1.0).v_x == pytest.approx(
-        -0.25
+        0.25
     )
 
 

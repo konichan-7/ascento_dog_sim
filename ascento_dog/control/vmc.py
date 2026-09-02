@@ -7,6 +7,7 @@ allocation, and analytical Jacobian-transpose force-to-torque mapping.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from itertools import product
@@ -19,6 +20,8 @@ from ascento_dog.kinematics import DEFAULT_GEOMETRY, FourBarGeometry
 
 Vector3 = NDArray[np.float64]
 Matrix3 = NDArray[np.float64]
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -311,11 +314,13 @@ class QuadrupedVMC:
         self.minimum_leg_force = float(minimum_leg_force)
         self.maximum_leg_force = float(maximum_leg_force)
         self.maximum_hip_torque = float(maximum_hip_torque)
+        self._reported_leg_limit_violations: set[str] = set()
 
     def reset(self) -> None:
         """Reset all controller memory."""
 
         self.height_pid.reset()
+        self._reported_leg_limit_violations.clear()
 
     def compute(self, state: VMCState, *, desired_height: float, dt: float) -> VMCCommand:
         """Compute bounded wheel forces and hip torques for one control step."""
@@ -331,6 +336,7 @@ class QuadrupedVMC:
             or center_of_mass.shape != (3,)
         ):
             raise ValueError("invalid orientation, velocity, or center-of-mass shape")
+        kinematic_angles = self._kinematic_angles(state.leg_angles)
 
         gravity_force = self.mass * self.gravity
         height_thrust = self.height_pid.update(
@@ -350,7 +356,7 @@ class QuadrupedVMC:
         names = tuple(self.mounts)
         contact_points: list[Vector3] = []
         for name in names:
-            pose = self.geometry.forward(float(state.leg_angles[name]))
+            pose = self.geometry.forward(kinematic_angles[name])
             wheel_leg = np.array([pose.e[0], 0.0, pose.e[1]])
             mount = self.mounts[name]
             contact_points.append(
@@ -368,7 +374,7 @@ class QuadrupedVMC:
         world_up = np.array([0.0, 0.0, 1.0])
         hip_torques: dict[str, float] = {}
         for index, name in enumerate(names):
-            q = float(state.leg_angles[name])
+            q = kinematic_angles[name]
             jacobian_xz = self.geometry.wheel_jacobian(q)
             jacobian_leg = np.array([jacobian_xz[0], 0.0, jacobian_xz[1]])
             jacobian_world = rotation @ self.mounts[name].rotation_body_from_leg @ jacobian_leg
@@ -388,3 +394,36 @@ class QuadrupedVMC:
             achieved_wrench=achieved,
             allocation_residual=achieved - desired_wrench,
         )
+
+    def _kinematic_angles(self, measured_angles: Mapping[str, float]) -> dict[str, float]:
+        """Return finite measured angles clamped to the analytical work interval.
+
+        MuJoCo joint limits are soft constraints and can be crossed slightly
+        during impacts.  FK and Jacobian evaluation use the nearest valid
+        endpoint so a recoverable limit excursion does not terminate the
+        control loop.  Each affected leg is logged once until :meth:`reset`.
+        """
+
+        bounded: dict[str, float] = {}
+        newly_violated: list[tuple[str, float, float]] = []
+        for name in self.mounts:
+            measured = float(measured_angles[name])
+            if not np.isfinite(measured):
+                raise ValueError(f"leg angle for {name!r} must be finite")
+            used = float(np.clip(measured, self.geometry.q_min, self.geometry.q_max))
+            bounded[name] = used
+            if measured != used and name not in self._reported_leg_limit_violations:
+                newly_violated.append((name, measured, used))
+
+        if newly_violated:
+            details = ", ".join(
+                f"{name}={measured:.9g}->{used:.9g} rad" for name, measured, used in newly_violated
+            )
+            _LOGGER.warning(
+                "VMC clamped measured hip angle to the analytical working interval: %s",
+                details,
+            )
+            self._reported_leg_limit_violations.update(
+                name for name, _measured, _used in newly_violated
+            )
+        return bounded

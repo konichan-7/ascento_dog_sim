@@ -24,13 +24,17 @@ def _chassis_x(model, data) -> float:
     return float(data.xpos[chassis_id, 0])
 
 
+def _tuned_wheel_controller() -> WheelVelocityController:
+    return WheelVelocityController(
+        WheelSpeedGains(kp=0.35, ki=0.2, integral_limit=3.0, output_limit=6.0)
+    )
+
+
 def test_forward_command_translates_the_robot_forward() -> None:
     model, data = load_quadruped_model()
     set_quadruped_pose(model, data, DEFAULT_GEOMETRY.q_nominal, wheels_on_floor=True)
     controller = create_default_vmc(model)
-    wheel_controller = WheelVelocityController(
-        WheelSpeedGains(kp=0.5, ki=0.2, integral_limit=3.0, output_limit=10.0)
-    )
+    wheel_controller = _tuned_wheel_controller()
     start_x = _chassis_x(model, data)
     command = TeleopCommand(v_x=0.5, omega_yaw=0.0)
 
@@ -46,13 +50,34 @@ def test_forward_command_translates_the_robot_forward() -> None:
     assert abs(state.pitch) < np.deg2rad(5.0)
 
 
+def test_aggressive_start_stop_keeps_pitch_bounded() -> None:
+    model, data = load_quadruped_model()
+    set_quadruped_pose(model, data, DEFAULT_GEOMETRY.q_nominal, wheels_on_floor=True)
+    controller = create_default_vmc(model)
+    wheel_controller = _tuned_wheel_controller()
+    pitch_samples: list[float] = []
+
+    segments = ((0.5, 0.0), (1.5, 1.0), (2.2, 0.0), (3.2, -1.0), (4.0, 0.0))
+    while data.time < segments[-1][0]:
+        speed = next(value for end, value in segments if data.time < end)
+        step_teleop(
+            model,
+            data,
+            controller,
+            wheel_controller,
+            TeleopCommand(v_x=speed, omega_yaw=0.0),
+            desired_height=0.37,
+        )
+        pitch_samples.append(read_vmc_state(model, data).pitch)
+
+    assert np.max(np.abs(pitch_samples)) < np.deg2rad(3.0)
+
+
 def test_yaw_command_turns_the_robot_left() -> None:
     model, data = load_quadruped_model()
     set_quadruped_pose(model, data, DEFAULT_GEOMETRY.q_nominal, wheels_on_floor=True)
     controller = create_default_vmc(model)
-    wheel_controller = WheelVelocityController(
-        WheelSpeedGains(kp=0.5, ki=0.2, integral_limit=3.0, output_limit=10.0)
-    )
+    wheel_controller = _tuned_wheel_controller()
     start_yaw = read_vmc_state(model, data).yaw
     command = TeleopCommand(v_x=0.0, omega_yaw=1.0)
 
@@ -61,7 +86,7 @@ def test_yaw_command_turns_the_robot_left() -> None:
         assert np.all(np.isfinite(data.qpos))
         assert np.all(np.isfinite(data.qvel))
 
-    # positive omega_yaw (the A key) must yaw counterclockwise from above (left turn)
+    # Positive omega_yaw (number key 3) must yaw counterclockwise from above.
     assert read_vmc_state(model, data).yaw - start_yaw > np.deg2rad(3.0)
 
 

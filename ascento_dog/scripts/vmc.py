@@ -18,6 +18,8 @@ from ascento_dog.simulation import (
 )
 from ascento_dog.simulation.viewer import ensure_mjpython_on_macos, make_esc_exit_callback
 
+DEFAULT_TELEOP_YAW_RATE = 4.0
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -31,7 +33,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--teleop", action="store_true", help="启用键盘遥杆(1前 2后 3左 4右)")
     parser.add_argument("--forward-speed", type=float, default=1.0, help="前进/后退脉冲幅值, m/s")
-    parser.add_argument("--yaw-rate", type=float, default=2.0, help="转向脉冲幅值, rad/s")
+    parser.add_argument(
+        "--yaw-rate",
+        type=float,
+        default=DEFAULT_TELEOP_YAW_RATE,
+        help="转向脉冲幅值, rad/s",
+    )
     parser.add_argument("--decay", type=float, default=1.0, help="脉冲线性衰减时长, s")
     return parser.parse_args()
 
@@ -47,10 +54,10 @@ def main() -> None:
     wheel_controller = (
         WheelVelocityController(
             WheelSpeedGains(
-                kp=0.5,
+                kp=0.35,
                 ki=0.2,
                 integral_limit=3.0,
-                output_limit=10.0,  # 示意,待整定
+                output_limit=6.0,  # 示意值；限制急加减速时的俯仰冲击
             )
         )
         if args.teleop

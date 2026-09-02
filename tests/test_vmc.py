@@ -133,6 +133,60 @@ def test_quadruped_vmc_compensates_gravity_and_maps_force_to_torque() -> None:
     assert command.allocation_residual == pytest.approx(np.zeros(3), abs=1.0e-10)
 
 
+def test_quadruped_vmc_clamps_soft_joint_limit_excursion(caplog) -> None:
+    controller = QuadrupedVMC(
+        mass=20.0,
+        mounts=_mounts(),
+        height_pid=HeightPID(PIDGains(1000.0, 0.0, 100.0, output_limit=300.0)),
+        attitude_gains=AttitudeGains(100.0, 10.0, 120.0, 12.0),
+        maximum_leg_force=100.0,
+        maximum_hip_torque=40.0,
+    )
+    leg_angles = {name: DEFAULT_GEOMETRY.q_nominal for name in LEG_NAMES}
+    leg_angles["front_left"] = DEFAULT_GEOMETRY.q_min - 1.0e-3
+    state = VMCState(
+        height=0.37,
+        vertical_velocity=0.0,
+        roll=0.0,
+        pitch=0.0,
+        angular_velocity_body=np.zeros(3),
+        body_to_world=np.eye(3),
+        leg_angles=leg_angles,
+    )
+
+    with caplog.at_level("WARNING"):
+        first = controller.compute(state, desired_height=0.37, dt=0.002)
+        second = controller.compute(state, desired_height=0.37, dt=0.002)
+
+    assert all(np.isfinite(list(first.hip_torques.values())))
+    assert all(np.isfinite(list(second.hip_torques.values())))
+    assert caplog.text.count("front_left") == 1
+    assert f"->{DEFAULT_GEOMETRY.q_min:.9g} rad" in caplog.text
+
+
+def test_quadruped_vmc_rejects_nonfinite_leg_angle() -> None:
+    controller = QuadrupedVMC(
+        mass=20.0,
+        mounts=_mounts(),
+        height_pid=HeightPID(PIDGains(1000.0, 0.0, 100.0, output_limit=300.0)),
+        attitude_gains=AttitudeGains(100.0, 10.0, 120.0, 12.0),
+    )
+    leg_angles = {name: DEFAULT_GEOMETRY.q_nominal for name in LEG_NAMES}
+    leg_angles["rear_right"] = float("nan")
+    state = VMCState(
+        height=0.37,
+        vertical_velocity=0.0,
+        roll=0.0,
+        pitch=0.0,
+        angular_velocity_body=np.zeros(3),
+        body_to_world=np.eye(3),
+        leg_angles=leg_angles,
+    )
+
+    with pytest.raises(ValueError, match="rear_right.*finite"):
+        controller.compute(state, desired_height=0.37, dt=0.002)
+
+
 def test_attitude_feedback_uses_opposite_left_right_and_front_rear_forces() -> None:
     controller = QuadrupedVMC(
         mass=20.0,

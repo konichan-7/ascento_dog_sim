@@ -37,8 +37,8 @@ class DefaultVMCParameters:
     height_thrust_limit: float = 180.0
     roll_kp: float = 180.0
     roll_kd: float = 28.0
-    pitch_kp: float = 260.0
-    pitch_kd: float = 38.0
+    pitch_kp: float = 480.0
+    pitch_kd: float = 100.0
     maximum_leg_force: float = 120.0
     maximum_hip_torque: float = 40.0
 
