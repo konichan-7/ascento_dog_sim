@@ -21,7 +21,7 @@ uv run leg-kinematics
 uv run vmc
 uv run vmc --teleop
 
-# 150 mm 台阶；默认打开查看器，--headless 用于无界面验证
+# 200 mm 台阶；默认打开查看器，--headless 用于无界面验证
 uv run cross-step
 uv run cross-step --headless --duration 30
 ```

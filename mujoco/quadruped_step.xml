@@ -33,10 +33,10 @@
   <worldbody>
     <light name="key" pos="0 -1.5 1.8" dir="0 0.6 -1"/>
     <!--
-      台阶：顶面高 150 mm，立面前缘位于 x = 0.9 m，向 +x 延伸到 x = 2.5 m。
+      台阶：顶面高 200 mm，立面前缘位于 x = 0.9 m，向 +x 延伸到 x = 2.5 m。
       contype/conaffinity 与地面一致，摩擦同车轮滚动摩擦约定。
     -->
-    <geom name="step" type="box" pos="1.7 0 0.075" size="0.8 0.75 0.075"
+    <geom name="step" type="box" pos="1.7 0 0.10" size="0.8 0.75 0.10"
           material="step_mat" contype="1" conaffinity="1"
           friction="1.5 0.01 0.001"/>
     <camera name="overview" pos="0.6 -2.0 1.0"

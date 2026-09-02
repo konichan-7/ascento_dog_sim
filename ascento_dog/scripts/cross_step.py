@@ -1,4 +1,4 @@
-"""运行跨越台阶验证：整车驶向默认 150 mm 平台，分阶段完成上台阶。
+"""运行跨越台阶验证：整车驶向默认 200 mm 平台，分阶段完成上台阶。
 
 无参数时启动 MuJoCo 查看器（macOS 需 mjpython，自动重启），ESC 退出；
 ``--headless`` 适用于 CI 与测试，成功上台阶后打印结果并以返回码 0 退出。
@@ -36,7 +36,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--headless", action="store_true", help="无界面运行，完成或失败后退出")
     parser.add_argument("--duration", type=float, default=30.0, help="最长仿真时长，s")
-    parser.add_argument("--step-height", type=float, default=0.15, help="台阶顶面高度，m")
+    parser.add_argument("--step-height", type=float, default=0.20, help="台阶顶面高度，m")
     parser.add_argument("--step-face-x", type=float, default=0.9, help="台阶立面前缘 x 坐标，m")
     parser.add_argument("--forward-speed", type=float, default=0.25, help="前进目标速度，m/s")
     return parser.parse_args()

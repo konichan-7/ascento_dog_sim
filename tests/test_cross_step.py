@@ -1,4 +1,4 @@
-"""Deterministic validation of the step-crossing scenario (150 mm step)."""
+"""Deterministic validation of the step-crossing scenario (200 mm step)."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ def _args(**overrides: object) -> argparse.Namespace:
     base = dict(
         headless=True,
         duration=30.0,
-        step_height=0.15,
+        step_height=0.20,
         step_face_x=0.9,
         forward_speed=0.25,
     )
@@ -38,15 +38,15 @@ def _args(**overrides: object) -> argparse.Namespace:
     return argparse.Namespace(**base)
 
 
-def test_step_scene_compiles_with_150mm_platform() -> None:
+def test_step_scene_compiles_with_200mm_platform() -> None:
     model, _ = load_step_model()
     step_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_GEOM, "step")
     assert step_id >= 0
     size = model.geom_size[step_id]
     assert size[0] == pytest.approx(0.8)
-    assert size[2] == pytest.approx(0.075)  # 150 mm 台阶
-    # 顶面高度 150 mm：中心 z 0.075 + 半高 0.075
-    assert model.geom_pos[step_id, 2] + size[2] == pytest.approx(0.15)
+    assert size[2] == pytest.approx(0.10)  # 200 mm 台阶
+    # 顶面高度 200 mm：中心 z 0.10 + 半高 0.10
+    assert model.geom_pos[step_id, 2] + size[2] == pytest.approx(0.20)
 
 
 def test_front_rear_wheels_and_mounts_same_direction_after_flip() -> None:
@@ -61,7 +61,7 @@ def test_front_rear_wheels_and_mounts_same_direction_after_flip() -> None:
 
 
 def test_full_step_crossing_succeeds_headless() -> None:
-    """机器人应从平地驶上 150 mm 台阶，四轮着台、姿态水平。"""
+    """机器人应从平地驶上 200 mm 台阶，四轮着台、姿态水平。"""
 
     args = _args()
     cross_step._validate_args(args)
@@ -88,10 +88,54 @@ def test_full_step_crossing_succeeds_headless() -> None:
     state = read_vmc_state(model, data)
     assert state.roll == pytest.approx(0.0, abs=np.deg2rad(1.0))
     assert state.pitch == pytest.approx(0.0, abs=np.deg2rad(1.0))
-    assert state.height == pytest.approx(0.15 + 0.065 + nominal_drop, abs=0.02)
+    assert state.height == pytest.approx(0.20 + 0.065 + nominal_drop, abs=0.02)
     for leg in ("front_left", "front_right", "rear_left", "rear_right"):
         wheel_z = float(data.body(f"{leg}_wheel").xpos[2])
-        assert wheel_z == pytest.approx(0.15 + 0.065, abs=0.01)
+        assert wheel_z == pytest.approx(0.20 + 0.065, abs=0.01)
+
+
+def test_crossing_pitch_and_rear_leg_length_are_bounded() -> None:
+    """全程俯仰受限，后腿有效腿长目标单调且无反向抖动。"""
+
+    args = _args()
+    model, data = load_step_model()
+    set_quadruped_pose(model, data, DEFAULT_GEOMETRY.q_nominal, wheels_on_floor=True)
+    controller = cross_step.create_controller(model, args)
+    max_abs_pitch = 0.0
+    rear_actual_lengths: list[float] = []
+    rear_target_lengths: list[float] = []
+    command = None
+
+    while float(data.time) < args.duration:
+        command = cross_step.step_once(model, data, controller)
+        state = read_vmc_state(model, data)
+        max_abs_pitch = max(max_abs_pitch, abs(state.pitch))
+        if command.phase == CrossingPhase.REAR_CLIMB:
+            lengths = []
+            for name in ("rear_left", "rear_right"):
+                q = float(
+                    np.clip(
+                        state.leg_angles[name],
+                        DEFAULT_GEOMETRY.q_min,
+                        DEFAULT_GEOMETRY.q_max,
+                    )
+                )
+                lengths.append(float(np.linalg.norm(DEFAULT_GEOMETRY.forward(q).e)))
+            rear_actual_lengths.append(float(np.mean(lengths)))
+            assert controller.rear_leg_length_target is not None
+            rear_target_lengths.append(controller.rear_leg_length_target)
+        if command.done or command.failed:
+            break
+
+    assert command is not None and command.done and not command.failed
+    assert max_abs_pitch <= np.deg2rad(8.0)
+    assert len(rear_target_lengths) > 2
+    target_steps = np.diff(rear_target_lengths)
+    actual_steps = np.diff(rear_actual_lengths)
+    dt = float(model.opt.timestep)
+    assert np.max(target_steps) <= 1.0e-12
+    assert np.min(target_steps) >= -controller.parameters.rear_retraction_rate * dt - 1.0e-12
+    assert np.max(actual_steps) <= 5.0e-4
 
 
 def test_controller_rejects_off_target_inputs() -> None:
@@ -112,10 +156,30 @@ def test_phases_follow_expected_sequence() -> None:
     """水平站姿高度与阶段顺序的纯逻辑检查。"""
 
     params = CrossingParameters()
-    assert params.step_height == pytest.approx(0.15)
+    assert params.step_height == pytest.approx(0.20)
+    assert params.extend_attitude_settle == pytest.approx(np.deg2rad(1.0))
+    assert params.rear_retraction_rate == pytest.approx(0.16)
+    assert params.pitch_kp == pytest.approx(360.0)
+    assert params.pitch_kd == pytest.approx(80.0)
     # 水平站姿：台阶顶 + 轮半径 + 最短腿下探量（前腿收缩到位时前轮恰好触台）。
-    assert params.stance_height == pytest.approx(0.15 + 0.065 + 0.111206, abs=1e-3)
+    assert params.stance_height == pytest.approx(0.20 + 0.065 + 0.111206, abs=1e-3)
     assert (
         CrossingPhase.FRONT_CLIMB.value == "front_climb"
         and CrossingPhase.REAR_CLIMB.value == "rear_climb"
     )
+
+
+def test_effective_leg_length_inverse_clamps_and_round_trips() -> None:
+    controller = StepCrossingController(
+        mass=20.0,
+        mounts={n: LegMount(m.position, m.rotation) for n, m in LEG_MOUNTS.items()},
+        parameters=CrossingParameters(),
+    )
+    nominal_length = float(np.linalg.norm(DEFAULT_GEOMETRY.forward(DEFAULT_GEOMETRY.q_nominal).e))
+    assert controller.q_for_leg_length(nominal_length) == pytest.approx(
+        DEFAULT_GEOMETRY.q_nominal, abs=1.0e-8
+    )
+    assert controller.q_for_leg_length(-1.0) == pytest.approx(DEFAULT_GEOMETRY.q_max)
+    assert controller.q_for_leg_length(1.0) == pytest.approx(DEFAULT_GEOMETRY.q_min)
+    with pytest.raises(ValueError):
+        controller.q_for_leg_length(np.nan)
