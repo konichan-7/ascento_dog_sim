@@ -17,7 +17,6 @@ def _args(**overrides: object) -> argparse.Namespace:
         teleop=False,
         forward_speed=0.5,
         yaw_rate=1.0,
-        decay=1.0,
     )
     base.update(overrides)
     return argparse.Namespace(**base)
@@ -26,8 +25,8 @@ def _args(**overrides: object) -> argparse.Namespace:
 def test_nonpositive_teleop_parameters_rejected() -> None:
     with pytest.raises(SystemExit, match="forward-speed"):
         vmc._validate_args(_args(forward_speed=-0.1))
-    with pytest.raises(SystemExit, match="decay"):
-        vmc._validate_args(_args(decay=0.0))
+    with pytest.raises(SystemExit, match="yaw-rate"):
+        vmc._validate_args(_args(yaw_rate=float("nan")))
 
 
 def test_valid_teleop_args_pass() -> None:
@@ -56,3 +55,39 @@ def test_esc_callback_ignores_non_esc_keys() -> None:
     key_callback(ord("1"))
     key_callback(ord("W"))
     assert not should_close.is_set()
+
+
+def test_teleop_uses_native_viewer_with_both_panels(monkeypatch) -> None:
+    from types import SimpleNamespace
+
+    import mujoco.viewer
+
+    from ascento_dog.control import HoldTeleop, TeleopCommand
+    from ascento_dog.simulation.teleop_viewer import NativeTeleopInput
+
+    calls = {}
+
+    class Viewer:
+        viewport = SimpleNamespace(left=200, bottom=0, width=600, height=600)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            pass
+
+        def is_running(self):
+            return False
+
+    def launch(*args, **kwargs):
+        calls.update(kwargs)
+        return Viewer()
+
+    monkeypatch.setattr(mujoco.viewer, "launch_passive", launch)
+    teleop = HoldTeleop()
+    teleop.press("1")
+    vmc._run_with_viewer(None, None, None, _args(teleop=True), 0, teleop, None)
+    assert calls["show_left_ui"] is True
+    assert calls["show_right_ui"] is True
+    assert isinstance(calls["key_callback"].__self__, NativeTeleopInput)
+    assert teleop.command(forward_speed=1, yaw_rate=4) == TeleopCommand(0, 0)

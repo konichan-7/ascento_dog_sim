@@ -20,6 +20,7 @@ name = "ascento-dog-sim"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "glfw" },
     { name = "matplotlib" },
     { name = "mujoco" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
@@ -34,6 +35,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "glfw", specifier = ">=2.8,<3" },
     { name = "matplotlib", specifier = ">=3.8,<4" },
     { name = "mujoco", specifier = ">=3.3,<4" },
     { name = "numpy", specifier = ">=2,<3" },

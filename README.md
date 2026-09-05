@@ -17,7 +17,7 @@ uv run pytest
 # 单腿悬空运动学
 uv run leg-kinematics
 
-# 整车 VMC；加 --teleop 后用数字键 1/2/3/4 前进、后退、左转、右转
+# 整车 VMC；加 --teleop 后按住数字键 1/2/3/4 前进、后退、左转、右转，松开停止
 uv run vmc
 uv run vmc --teleop
 
@@ -25,5 +25,9 @@ uv run vmc --teleop
 uv run cross-step
 uv run cross-step --headless --duration 30
 ```
+
+遥控模式保留原生 MuJoCo 查看器。左侧 `Rendering → Contact force` 显示接触力，
+`Contact point` 显示接触点；`Tab` / `Shift+Tab` 显示或隐藏左右面板。
+遥控时将鼠标移到中央三维视图区；鼠标在面板上时，数字键保留原生 UI 输入行为。
 
 所有脚本按 `Esc` 或关闭窗口退出。坐标系、解析运动学、VMC、控制框架和跨台阶设计统一记录在 [docs/design.md](docs/design.md)。

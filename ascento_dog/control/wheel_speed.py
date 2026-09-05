@@ -5,7 +5,7 @@ The module provides four independent pieces:
 - ``TeleopCommand``: a two-degree-of-freedom chassis-frame teleop command.
 - ``wheel_speed_targets``: maps a teleop command to per-wheel angular speeds.
 - ``WheelVelocityController``: a per-wheel PI speed controller with anti-windup.
-- ``PulseTeleop``: latches 1/2/3/4 key presses into linearly-decaying commands.
+- ``HoldTeleop``: maps held 1/2/3/4 keys to constant commands.
 
 All quantities are SI (m, rad, s).  No physics engine is imported here.
 """
@@ -134,73 +134,46 @@ class WheelVelocityController:
         return torques
 
 
-class PulseTeleop:
-    """Latches 1/2/3/4 direction presses into linearly-decaying commands.
+class HoldTeleop:
+    """Track held number keys, independent of key-repeat timing.
 
-    Number keys avoid any overlap with MuJoCo viewer key handling.  Mapping is
-    1 = forward, 2 = backward, 3 = turn left, 4 = turn right.  Forward is the
-    chassis +x direction, consistent with :class:`TeleopCommand`, the model
-    coordinates, and the user-facing command help.
-
-    The viewer's ``key_callback`` only delivers key-down events, so the teleop
-    latches a direction for each axis and decays it linearly to zero over
-    ``decay`` seconds.  Re-pressing an axis restarts its decay window.  The
-    clock ``t`` is wall time (``time.monotonic()``), not simulation time.
+    1/2 command chassis +x/-x (m/s); 3/4 command yaw about +z/-z (rad/s).
+    Opposite keys cancel; translation and yaw can be combined. Releasing a
+    key removes its command immediately. Non-finite or negative speeds raise
+    ValueError. This input mapping has no dependence on leg assembly geometry.
     """
 
     def __init__(self) -> None:
         self._lock = Lock()
-        self._vx_sign = 0.0
-        self._vx_t0: float | None = None
-        self._yaw_sign = 0.0
-        self._yaw_t0: float | None = None
+        self._held: set[str] = set()
 
-    def press(self, key: str, t: float) -> None:
-        """Record a direction press for the given axis at wall time ``t``."""
-
-        if not np.isfinite(t):
-            raise ValueError("press time must be finite")
+    def reset(self) -> None:
+        """Clear held keys, e.g. on window focus loss or shutdown."""
         with self._lock:
-            if key == "1":  # forward, chassis +x
-                self._vx_sign, self._vx_t0 = 1.0, t
-            elif key == "2":  # backward
-                self._vx_sign, self._vx_t0 = -1.0, t
-            elif key == "3":  # turn left
-                self._yaw_sign, self._yaw_t0 = 1.0, t
-            elif key == "4":  # turn right
-                self._yaw_sign, self._yaw_t0 = -1.0, t
+            self._held.clear()
 
-    def command(
-        self,
-        t: float,
-        *,
-        forward_speed: float,
-        yaw_rate: float,
-        decay: float,
-    ) -> TeleopCommand:
-        """Return the teleop command at wall time ``t`` after linear decay."""
+    def press(self, key: str) -> None:
+        """Mark 1/2/3/4 held; repeats are idempotent, other keys ignored."""
+        if key in ("1", "2", "3", "4"):
+            with self._lock:
+                self._held.add(key)
 
-        values = (forward_speed, yaw_rate, decay, t)
-        if any(not np.isfinite(value) for value in values):
+    def release(self, key: str) -> None:
+        """Remove a held key; unmatched releases are harmless."""
+        with self._lock:
+            self._held.discard(key)
+
+    def command(self, *, forward_speed: float, yaw_rate: float) -> TeleopCommand:
+        """Return held-key velocity targets in chassis coordinates (m/s, rad/s).
+
+        Speeds must be finite and nonnegative, otherwise raise ValueError.
+        """
+        if any(not np.isfinite(value) for value in (forward_speed, yaw_rate)):
             raise ValueError("teleop command inputs must be finite")
-        if forward_speed < 0.0 or yaw_rate < 0.0 or decay <= 0.0:
-            raise ValueError("forward_speed/yaw_rate must be nonnegative and decay positive")
+        if forward_speed < 0.0 or yaw_rate < 0.0:
+            raise ValueError("forward_speed/yaw_rate must be nonnegative")
         with self._lock:
-            v_x = self._axis_value(self._vx_sign, self._vx_t0, t, forward_speed, decay)
-            omega_yaw = self._axis_value(self._yaw_sign, self._yaw_t0, t, yaw_rate, decay)
-        return TeleopCommand(v_x=v_x, omega_yaw=omega_yaw)
-
-    @staticmethod
-    def _axis_value(
-        sign: float,
-        t0: float | None,
-        t: float,
-        amplitude: float,
-        decay: float,
-    ) -> float:
-        if t0 is None:
-            return 0.0
-        fraction = (t - t0) / decay
-        if fraction >= 1.0:
-            return 0.0
-        return sign * amplitude * (1.0 - max(fraction, 0.0))
+            return TeleopCommand(
+                v_x=forward_speed * (("1" in self._held) - ("2" in self._held)),
+                omega_yaw=yaw_rate * (("3" in self._held) - ("4" in self._held)),
+            )

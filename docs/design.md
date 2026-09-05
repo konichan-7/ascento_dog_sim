@@ -818,7 +818,7 @@ $$
 | --- | --- | --- |
 | 解析运动学 | `ascento_dog/kinematics/four_bar.py` | FK、IK、工作支路、解析雅可比 |
 | 控制器 | `ascento_dog/control/vmc.py` | 高度 PID、姿态 PD、有界支持力分配、髋力矩映射 |
-| 轮速控制 | `ascento_dog/control/wheel_speed.py` | 驱动运动学、四轮独立 PI、键盘脉冲命令 |
+| 轮速控制 | `ascento_dog/control/wheel_speed.py` | 驱动运动学、四轮独立 PI、键盘按住命令 |
 | 仿真适配 | `mujoco/simulation/mujoco_vmc.py` | 状态读取、模型质量和质心读取、指令写入、扰动 |
 | 动力学 | `mujoco/quadruped.xml` | 自由底盘、四个闭环腿、重力、轮地接触、IMU 和执行器 |
 | 入口 | `ascento_dog/scripts/vmc.py` | 参数解析、Viewer、目标高度和遥控编排 |
@@ -969,7 +969,13 @@ $$
 -\tau_{w,max},\tau_{w,max}\right).
 $$
 
-数字键 `1/2/3/4` 分别触发前进、后退、左转、右转的锁存脉冲，默认在 $1\ \mathrm s$ 内线性衰减。转向脉冲的默认命令幅值为 $4.0\ \mathrm{rad/s}$，可通过 `--yaw-rate` 覆盖；它是差速轮速映射的输入幅值，不是实际机体 yaw 角速度保证。该轮速环实现平移和开环 yaw 速率命令，但不构成 yaw 姿态保持。
+数字键 `1/2/3/4` 分别控制前进、后退、左转、右转：按住期间保持命令，松开后在下一次控制更新将对应命令归零，不再使用脉冲衰减，删除 `--decay` 参数。默认平移速度为 $1.0\ \mathrm{m/s}$（`--forward-speed`），转向命令为 $4.0\ \mathrm{rad/s}$（`--yaw-rate`）。相反方向同时按住互相抵消；平移和转向可以组合，松开一个键不影响其他仍按住的键。这些是差速轮速映射的输入，不是实际机体速度保证；松开时由轮速 PI 制动，受惯性和力矩限幅影响，不会瞬间将物理速度设零。该轮速环不构成 yaw 姿态保持。
+
+`vmc --teleop` 使用原生 `mujoco.viewer.launch_passive`，默认显示左右 UI 面板。左侧 **Rendering → Contact force** 可显示接触力；**Contact point** 显示接触点。`Tab` / `Shift+Tab` 切换左右面板，原生鼠标视角操作保持可用。遥控时将鼠标移到中央三维视图区，按住 `1/2/3/4`；鼠标在面板上时数字键用于原生 UI 输入。带修饰键的快捷键仍由原生 UI 处理。
+
+MuJoCo 原生 Python 回调仅提供按下键码。`mujoco/simulation/teleop_viewer.py` 的 `NativeTeleopInput` 在首次按键回调所在的 UI 线程取得 GLFW 当前窗口，接入原窗口的键盘、失焦和关闭回调。释放事件立即清除对应按住状态；系统重复按键不重新启动失焦后的命令。原生 C 回调完整保留并串联，数字遥控键在三维区内被消费，避免切换同名的几何组快捷键；首次按键已经过原生处理时，重放一次同一几何组快捷键以还原切换。适配器持有 C 回调引用，生命周期由原生查看器持有的 Python 回调维持，退出后不访问已销毁的窗口。回调错误清空遥控并在仿真线程显式报错。GLFW 回调语义见 [官方输入说明](https://www.glfw.org/docs/latest/input)。
+
+运行 `uv run vmc --teleop`。macOS 上普通与遥控模式统一自动通过 `mjpython` 启动原生查看器。输入映射 `HoldTeleop` 位于控制层并提供 `reset()`，不依赖 MuJoCo。
 
 其中前进严格定义为机体系 $+x_B$，所以数字键 `1` 生成 $v_x^*>0$，数字键 `2` 生成 $v_x^*<0$。为降低大速度阶跃产生的俯仰冲击，teleop 的轮速 PI 比例增益和轮电机力矩上限采用较保守的示意值；姿态环则提高 pitch 刚度与阻尼。当前无界面回归使用“静止—$1\ \mathrm{m/s}$ 前进—急停—$1\ \mathrm{m/s}$ 后退—急停”工况。
 

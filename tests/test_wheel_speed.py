@@ -1,7 +1,7 @@
 import pytest
 
 from ascento_dog.control import (
-    PulseTeleop,
+    HoldTeleop,
     TeleopCommand,
     WheelSpeedGains,
     WheelVelocityController,
@@ -95,54 +95,45 @@ def test_wheel_controller_name_mismatch_rejected() -> None:
         controller.update({"a": 1.0}, {"b": 1.0}, 0.01)
 
 
-def test_press_1_produces_positive_decaying_forward_command() -> None:
-    teleop = PulseTeleop()
-    teleop.press("1", 10.0)
-    assert teleop.command(10.0, forward_speed=0.5, yaw_rate=1.0, decay=1.0) == TeleopCommand(
-        0.5, 0.0
-    )
-    assert teleop.command(10.5, forward_speed=0.5, yaw_rate=1.0, decay=1.0) == TeleopCommand(
-        0.25, 0.0
-    )
-    assert teleop.command(11.0, forward_speed=0.5, yaw_rate=1.0, decay=1.0) == TeleopCommand(
-        0.0, 0.0
-    )
+def test_hold_does_not_decay_and_release_stops() -> None:
+    teleop = HoldTeleop()
+    teleop.press("1")
+    # No repeat events are needed to sustain a hold over arbitrarily many updates.
+    for _ in range(10000):
+        assert teleop.command(forward_speed=0.5, yaw_rate=1.0) == TeleopCommand(0.5, 0.0)
+    teleop.release("1")
+    assert teleop.command(forward_speed=0.5, yaw_rate=1.0) == TeleopCommand(0.0, 0.0)
 
 
-def test_press_2_reverses_forward_axis() -> None:
-    teleop = PulseTeleop()
-    teleop.press("2", 0.0)
-    command = teleop.command(0.0, forward_speed=0.5, yaw_rate=1.0, decay=1.0)
-    assert command.v_x == pytest.approx(-0.5)
-    assert command.omega_yaw == pytest.approx(0.0)
+@pytest.mark.parametrize(
+    "key,expected", [("1", (0.5, 0)), ("2", (-0.5, 0)), ("3", (0, 1)), ("4", (0, -1))]
+)
+def test_hold_direction_mapping(key, expected) -> None:
+    teleop = HoldTeleop()
+    teleop.press(key)
+    assert teleop.command(forward_speed=0.5, yaw_rate=1.0) == TeleopCommand(*expected)
 
 
-def test_combined_1_3_both_axes() -> None:
-    teleop = PulseTeleop()
-    teleop.press("1", 0.0)
-    teleop.press("3", 0.0)
-    command = teleop.command(0.0, forward_speed=0.5, yaw_rate=1.0, decay=1.0)
-    assert command.v_x == pytest.approx(0.5)
-    assert command.omega_yaw == pytest.approx(1.0)
+def test_repeat_opposing_keys_and_independent_release() -> None:
+    teleop = HoldTeleop()
+    for key in ("1", "1", "2", "3", "4"):
+        teleop.press(key)
+    assert teleop.command(forward_speed=0.5, yaw_rate=1.0) == TeleopCommand(0, 0)
+    teleop.release("2")
+    teleop.release("4")
+    assert teleop.command(forward_speed=0.5, yaw_rate=1.0) == TeleopCommand(0.5, 1)
+    teleop.release("1")
+    assert teleop.command(forward_speed=0.5, yaw_rate=1.0) == TeleopCommand(0, 1)
+    teleop.reset()
+    teleop.release("3")
+    teleop.press("W")
+    assert teleop.command(forward_speed=0.5, yaw_rate=1.0) == TeleopCommand(0, 0)
 
 
-def test_repress_restarts_decay_window() -> None:
-    teleop = PulseTeleop()
-    teleop.press("1", 0.0)
-    teleop.press("1", 10.0)
-    assert teleop.command(10.5, forward_speed=0.5, yaw_rate=1.0, decay=1.0).v_x == pytest.approx(
-        0.25
-    )
-
-
-def test_unpressed_is_zero() -> None:
-    teleop = PulseTeleop()
-    assert teleop.command(0.0, forward_speed=0.5, yaw_rate=1.0, decay=1.0) == TeleopCommand(
-        0.0, 0.0
-    )
-
-
-def test_non_finite_teleop_inputs_rejected() -> None:
-    teleop = PulseTeleop()
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -0.1])
+@pytest.mark.parametrize("parameter", ["forward_speed", "yaw_rate"])
+def test_invalid_teleop_inputs_rejected(parameter, value) -> None:
+    inputs = dict(forward_speed=0.5, yaw_rate=1.0)
+    inputs[parameter] = value
     with pytest.raises(ValueError):
-        teleop.command(float("nan"), forward_speed=0.5, yaw_rate=1.0, decay=1.0)
+        HoldTeleop().command(**inputs)

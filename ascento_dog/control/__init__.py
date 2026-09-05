@@ -19,7 +19,7 @@ from ascento_dog.control.vmc import (
     vertical_force_allocation_matrix,
 )
 from ascento_dog.control.wheel_speed import (
-    PulseTeleop,
+    HoldTeleop,
     TeleopCommand,
     WheelSpeedGains,
     WheelVelocityController,
@@ -42,7 +42,7 @@ __all__ = [
     "StepCrossingController",
     "WheelObservation",
     "TeleopCommand",
-    "PulseTeleop",
+    "HoldTeleop",
     "WheelSpeedGains",
     "WheelVelocityController",
     "wheel_speed_targets",

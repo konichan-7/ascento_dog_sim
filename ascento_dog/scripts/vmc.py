@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import argparse
 import time
-from math import pi, sin
+from math import isfinite, pi, sin
 
-from ascento_dog.control import PulseTeleop, WheelSpeedGains, WheelVelocityController
+from ascento_dog.control import HoldTeleop, WheelSpeedGains, WheelVelocityController
 from ascento_dog.kinematics import DEFAULT_GEOMETRY
 from ascento_dog.simulation import (
     apply_body_disturbance,
@@ -31,15 +31,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--disturbance-duration", type=float, default=0.15, help="单次扰动持续时间，s"
     )
-    parser.add_argument("--teleop", action="store_true", help="启用键盘遥杆(1前 2后 3左 4右)")
-    parser.add_argument("--forward-speed", type=float, default=1.0, help="前进/后退脉冲幅值, m/s")
+    parser.add_argument(
+        "--teleop", action="store_true", help="启用键盘遥控(按住动作、松开停止: 1前 2后 3左 4右)"
+    )
+    parser.add_argument("--forward-speed", type=float, default=1.0, help="按住时前进/后退速度, m/s")
     parser.add_argument(
         "--yaw-rate",
         type=float,
         default=DEFAULT_TELEOP_YAW_RATE,
-        help="转向脉冲幅值, rad/s",
+        help="按住时转向角速度, rad/s",
     )
-    parser.add_argument("--decay", type=float, default=1.0, help="脉冲线性衰减时长, s")
     return parser.parse_args()
 
 
@@ -63,7 +64,7 @@ def main() -> None:
         if args.teleop
         else None
     )
-    teleop = PulseTeleop() if args.teleop else None
+    teleop = HoldTeleop() if args.teleop else None
     simulation_start = float(data.time)
     _run_with_viewer(model, data, controller, args, simulation_start, teleop, wheel_controller)
 
@@ -73,43 +74,39 @@ def _run_with_viewer(
 ) -> None:
     import mujoco.viewer
 
+    from ascento_dog.simulation.teleop_viewer import NativeTeleopInput
+
     should_close, esc_callback = make_esc_exit_callback()
-
-    def key_callback(keycode: int) -> None:
-        esc_callback(keycode)
-        if should_close.is_set():
-            return
-        key = chr(keycode) if 32 <= keycode < 127 else ""
-        if teleop is not None and key and key in "1234":
-            teleop.press(key, time.monotonic())
-
-    # teleop 模式下隐藏左右 UI 面板,避免文本输入框抢键盘焦点与数字键遥杆冲突。
-    show_ui = teleop is None
-    with mujoco.viewer.launch_passive(
-        model,
-        data,
-        key_callback=key_callback,
-        show_left_ui=show_ui,
-        show_right_ui=show_ui,
-    ) as viewer:
-        # viewer 模式无时间上限,运行到 ESC 或关闭窗口为止。
-        while viewer.is_running() and not should_close.is_set():
-            step_start = time.monotonic()
-            _step(model, data, controller, args, simulation_start, teleop, wheel_controller)
-            viewer.sync()
-            remaining = float(model.opt.timestep) - (time.monotonic() - step_start)
-            if remaining > 0.0:
-                time.sleep(remaining)
+    keyboard = NativeTeleopInput(teleop, should_close) if teleop is not None else None
+    try:
+        with mujoco.viewer.launch_passive(
+            model,
+            data,
+            key_callback=keyboard.key_callback if keyboard is not None else esc_callback,
+            show_left_ui=True,
+            show_right_ui=True,
+        ) as viewer:
+            if keyboard is not None:
+                keyboard.viewport = lambda: viewer.viewport
+            while viewer.is_running() and not should_close.is_set():
+                step_start = time.monotonic()
+                _step(model, data, controller, args, simulation_start, teleop, wheel_controller)
+                viewer.sync()
+                remaining = float(model.opt.timestep) - (time.monotonic() - step_start)
+                if remaining > 0.0:
+                    time.sleep(remaining)
+    finally:
+        if keyboard is not None:
+            keyboard.stop()
+            keyboard.check_error()
 
 
 def _step(model, data, controller, args, simulation_start, teleop, wheel_controller) -> None:
     elapsed = float(data.time) - simulation_start
     if teleop is not None:
         command = teleop.command(
-            time.monotonic(),
             forward_speed=args.forward_speed,
             yaw_rate=args.yaw_rate,
-            decay=args.decay,
         )
         step_teleop(model, data, controller, wheel_controller, command, desired_height=args.height)
     else:
@@ -138,8 +135,8 @@ def _validate_args(args: argparse.Namespace) -> None:
             raise SystemExit("目标高度必须位于 [0.25, 0.46] m")
     elif not 0.25 <= args.height - args.amplitude <= args.height + args.amplitude <= 0.46:
         raise SystemExit("目标高度范围必须位于 [0.25, 0.46] m")
-    if args.forward_speed < 0.0 or args.yaw_rate < 0.0 or args.decay <= 0.0:
-        raise SystemExit("--forward-speed/--yaw-rate 不得为负,--decay 必须为正")
+    if any(not isfinite(value) or value < 0.0 for value in (args.forward_speed, args.yaw_rate)):
+        raise SystemExit("--forward-speed/--yaw-rate 必须为有限非负数")
 
 
 if __name__ == "__main__":
