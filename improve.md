@@ -152,7 +152,7 @@ QP 在 H723 上的可行性分析见文末"部署可行性：STM32H723 上的 QP
 
 ## 横向工程规范
 
-1. **解耦**：所有算法（惯性模型、估计器、水平环、QP 分配、规划器）放 `ascento_dog/control/`（或 `ascento_dog/planning/`），纯 numpy；`mujoco/simulation/` 只加 I/O 与真值/噪声测量合成；
+1. **解耦**：所有算法（惯性模型、估计器、水平环、QP 分配、规划器）放 `ascento_dog/control/`（或 `ascento_dog/planning/`），纯 numpy；`ascento_dog/simulation/` 只加 I/O 与真值/噪声测量合成；
 2. **文档同步**：每完成一项，把"现状"部分从本文移入 `docs/design.md`（或对应功能文档），并同步 `AGENTS.md` 的功能分层；
 3. **验证门槛**：每项落地必须过 `uv run ruff check`、`uv run ruff format --check`、`uv run pytest`；新增测试文件与本文编号对应（`test_leg_dynamics.py`、`test_estimator.py`、`test_contact_allocation.py`、`test_wbc.py`）；
 4. **参数纪律**：P1 之后所有新增增益/限幅写入参数类并注明来源（辨识值/示意值），不允许散落魔法数；

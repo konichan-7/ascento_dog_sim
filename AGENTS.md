@@ -13,12 +13,12 @@
 | `ascento_dog/kinematics/` | 单腿闭环正逆运动学、工作支路、解析雅可比 | 不依赖 MuJoCo，作为模型和控制器的外部真值 |
 | `ascento_dog/control/` | VMC、轮速 PI、跨台阶状态机 | 可依赖解析运动学，不得依赖 MuJoCo |
 | `mujoco/` | 手写 MJCF、闭环约束、接触场景 | 闭环腿必须使用具名等式约束和具名站点 |
-| `mujoco/simulation/` | MuJoCo 加载、状态映射、命令写入和扰动注入 | 以 `ascento_dog.simulation` 导入；不得在此重写控制算法 |
+| `ascento_dog/simulation/` | MuJoCo 加载、状态映射、命令写入和扰动注入 | 标准 Python 子包；不得在此重写控制算法 |
 | `ascento_dog/scripts/` | `leg-kinematics`、`vmc`、`cross-step` 三个轻量入口 | 只负责编排和可视化，不重复测试逻辑 |
 | `tests/` | 确定性单元测试与集成测试 | 验证解析几何、MJCF 映射、控制与场景行为 |
 | `docs/design.md` | 唯一技术设计文档 | 记录坐标、推导、控制架构、假设与复现方法 |
 
-`mujoco/` 不能成为 Python 包，否则会遮蔽同名的 MuJoCo Python 绑定。`ascento_dog/__init__.py` 通过扩展 `__path__` 暴露 `mujoco/simulation/`。
+`mujoco/` 只保存 MJCF 模型和场景，不能成为 Python 包，否则会遮蔽同名的 MuJoCo Python 绑定。仿真适配源码放在标准子包 `ascento_dog/simulation/`，以 `ascento_dog.simulation` 导入，不使用目录符号链接或动态扩展 `__path__`。模型加载路径相对源码文件定位仓库中的 `mujoco/`，不得依赖启动时的工作目录。
 
 ## 3. 全局坐标系与命名
 

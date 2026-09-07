@@ -1,82 +1,90 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1350" height="680" viewBox="0 0 1350 680" role="img" aria-labelledby="title desc">
-  <title id="title">四轮足机器人 VMC 闭环框图</title>
-  <desc id="desc">学术论文线稿风格的控制框图，包括底盘高度 PID、重力前馈、roll/pitch 姿态 PD、支持力分配、解析雅可比转置映射、执行器限幅、MuJoCo 或实机以及状态反馈。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="940" viewBox="0 0 1440 940" role="img" aria-labelledby="title desc">
+  <title id="title">四轮足机器人控制信号流</title>
+  <desc id="desc">高度 PID 与重力前馈先相加，再与姿态力矩拼接。支持力分配经实时雅可比换算为限幅髋力矩；轮速 PI 独立生成轮力矩。仿真真值分别反馈给高度、姿态、几何和轮速模块。实线为目标或命令，虚线为状态反馈。</desc>
   <defs>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z" fill="#111"/></marker>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#24364b"/></marker>
+    <marker id="feedback-arrow" markerWidth="9" markerHeight="9" refX="8" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#51687e"/></marker>
     <style>
-      .box{fill:#fff;stroke:#111;stroke-width:1.7}.sum{fill:#fff;stroke:#111;stroke-width:1.7}.flow{fill:none;stroke:#111;stroke-width:1.8;marker-end:url(#arrow)}.feedback{fill:none;stroke:#555;stroke-width:1.5;stroke-dasharray:7 6;marker-end:url(#arrow)}.rule{stroke:#aaa;stroke-width:1}.head{font:600 17px 'Songti SC','Noto Serif CJK SC',serif;fill:#111}.note{font:14px 'Songti SC','Noto Serif CJK SC',serif;fill:#111}.math{font:italic 18px 'Times New Roman','STIX Two Text',serif;fill:#111}.smallmath{font:italic 15px 'Times New Roman','STIX Two Text',serif;fill:#111}
+      .box{fill:#fff;stroke:#24364b;stroke-width:1.8}.input{fill:#f1f5f9;stroke:#24364b;stroke-width:1.8}.flow{fill:none;stroke:#24364b;stroke-width:1.8;marker-end:url(#arrow)}.feedback{fill:none;stroke:#51687e;stroke-width:1.7;stroke-dasharray:7 5;marker-end:url(#feedback-arrow)}.bus{fill:none;stroke:#51687e;stroke-width:1.7;stroke-dasharray:7 5}.head{font:600 21px 'PingFang SC','Noto Sans CJK SC',sans-serif;fill:#192b3e}.text{font:17px 'PingFang SC','Noto Sans CJK SC',sans-serif;fill:#24364b}.small{font:15px 'PingFang SC','Noto Sans CJK SC',sans-serif;fill:#40566b}.math{font:20px 'Times New Roman','PingFang SC',serif;fill:#192b3e}
     </style>
   </defs>
-  <rect width="1350" height="680" fill="#fff"/>
-
-  <!-- height and attitude controllers -->
-  <rect x="35" y="55" width="195" height="105" class="box"/>
-  <text x="132" y="84" text-anchor="middle" class="head">底盘高度 PID</text>
-  <text x="132" y="113" text-anchor="middle" class="math">e<tspan baseline-shift="sub" font-size="12">h</tspan>=h*−h</text>
-  <text x="132" y="141" text-anchor="middle" class="smallmath">F<tspan baseline-shift="sub" font-size="11">PID</tspan>=K<tspan baseline-shift="sub" font-size="11">ph</tspan>e<tspan baseline-shift="sub" font-size="11">h</tspan>+K<tspan baseline-shift="sub" font-size="11">ih</tspan>I<tspan baseline-shift="sub" font-size="11">h</tspan>−K<tspan baseline-shift="sub" font-size="11">dh</tspan>ḣ</text>
-
-  <rect x="35" y="210" width="195" height="85" class="box"/>
-  <text x="132" y="239" text-anchor="middle" class="head">重力前馈</text>
-  <text x="132" y="270" text-anchor="middle" class="math">F<tspan baseline-shift="sub" font-size="12">g</tspan>=Mg</text>
-
-  <rect x="35" y="345" width="195" height="120" class="box"/>
-  <text x="132" y="374" text-anchor="middle" class="head">roll / pitch PD</text>
-  <text x="132" y="405" text-anchor="middle" class="smallmath">τ<tspan baseline-shift="sub" font-size="11">x</tspan>*=−K<tspan baseline-shift="sub" font-size="11">pϕ</tspan>ϕ<tspan baseline-shift="sub" font-size="11">B</tspan>−K<tspan baseline-shift="sub" font-size="11">dϕ</tspan>ω<tspan baseline-shift="sub" font-size="11">x</tspan></text>
-  <text x="132" y="435" text-anchor="middle" class="smallmath">τ<tspan baseline-shift="sub" font-size="11">y</tspan>*=−K<tspan baseline-shift="sub" font-size="11">pϑ</tspan>ϑ<tspan baseline-shift="sub" font-size="11">B</tspan>−K<tspan baseline-shift="sub" font-size="11">dϑ</tspan>ω<tspan baseline-shift="sub" font-size="11">y</tspan></text>
-
-  <!-- wrench assembly -->
-  <circle cx="300" cy="245" r="18" class="sum"/>
-  <text x="300" y="251" text-anchor="middle" class="math">Σ</text>
-  <path d="M230 108H270V227H282" class="flow"/>
-  <path d="M230 252H282" class="flow"/>
-  <path d="M230 405H270V263H282" class="flow"/>
-  <text x="327" y="220" class="smallmath">F<tspan baseline-shift="sub" font-size="11">z</tspan>*=max(0,F<tspan baseline-shift="sub" font-size="11">g</tspan>+F<tspan baseline-shift="sub" font-size="11">PID</tspan>)</text>
-  <text x="327" y="256" class="smallmath">w*=[F<tspan baseline-shift="sub" font-size="11">z</tspan>*,τ<tspan baseline-shift="sub" font-size="11">x</tspan>*,τ<tspan baseline-shift="sub" font-size="11">y</tspan>*]ᵀ</text>
-
-  <!-- geometry -->
-  <rect x="300" y="355" width="205" height="110" class="box"/>
-  <text x="402" y="384" text-anchor="middle" class="head">实时几何</text>
-  <text x="402" y="415" text-anchor="middle" class="smallmath">E<tspan baseline-shift="sub" font-size="11">i</tspan>=FK(q<tspan baseline-shift="sub" font-size="11">i</tspan>),　J<tspan baseline-shift="sub" font-size="11">E,i</tspan>(q<tspan baseline-shift="sub" font-size="11">i</tspan>)</text>
-  <text x="402" y="443" text-anchor="middle" class="smallmath">r<tspan baseline-shift="sub" font-size="11">i</tspan><tspan baseline-shift="super" font-size="11">B</tspan>, R<tspan baseline-shift="sub" font-size="11">WB</tspan>, r<tspan baseline-shift="sub" font-size="11">COM</tspan><tspan baseline-shift="super" font-size="11">B</tspan></text>
-
-  <!-- allocator -->
-  <rect x="550" y="180" width="240" height="165" class="box"/>
-  <text x="670" y="210" text-anchor="middle" class="head">有界支持力分配</text>
-  <text x="670" y="243" text-anchor="middle" class="smallmath">min ‖W<tspan baseline-shift="sub" font-size="11">A</tspan>(𝒜f−w*)‖²<tspan baseline-shift="sub" font-size="11">2</tspan></text>
-  <text x="670" y="273" text-anchor="middle" class="smallmath">+ ε<tspan baseline-shift="sub" font-size="11">A</tspan>‖f−f<tspan baseline-shift="sub" font-size="11">0</tspan>‖²<tspan baseline-shift="sub" font-size="11">2</tspan></text>
-  <line x1="582" y1="291" x2="758" y2="291" class="rule"/>
-  <text x="670" y="320" text-anchor="middle" class="smallmath">f<tspan baseline-shift="sub" font-size="11">i,min</tspan>≤f<tspan baseline-shift="sub" font-size="11">i</tspan>≤f<tspan baseline-shift="sub" font-size="11">i,max</tspan></text>
-  <path d="M470 256H550" class="flow"/>
-  <path d="M505 410H530V318H550" class="flow"/>
-
-  <!-- J transpose and actuator -->
-  <rect x="845" y="180" width="180" height="165" class="box"/>
-  <text x="935" y="210" text-anchor="middle" class="head">解析力矩映射</text>
-  <text x="935" y="252" text-anchor="middle" class="math">τ<tspan baseline-shift="sub" font-size="12">i</tspan>=−J<tspan baseline-shift="sub" font-size="12">E,i</tspan>ᵀF<tspan baseline-shift="sub" font-size="12">i</tspan></text>
-  <text x="935" y="292" text-anchor="middle" class="smallmath">τ<tspan baseline-shift="sub" font-size="11">i</tspan>=−f<tspan baseline-shift="sub" font-size="11">i</tspan>(e<tspan baseline-shift="sub" font-size="11">z</tspan><tspan baseline-shift="super" font-size="11">W</tspan>)ᵀR<tspan baseline-shift="sub" font-size="11">WB</tspan>R<tspan baseline-shift="sub" font-size="11">BL</tspan>j<tspan baseline-shift="sub" font-size="11">i</tspan><tspan baseline-shift="super" font-size="11">L</tspan></text>
-  <text x="935" y="322" text-anchor="middle" class="note">虚功与静力平衡</text>
-  <path d="M790 262H845" class="flow"/>
-
-  <rect x="1080" y="205" width="115" height="115" class="box"/>
-  <text x="1138" y="235" text-anchor="middle" class="head">限幅</text>
-  <text x="1138" y="271" text-anchor="middle" class="smallmath">|τ<tspan baseline-shift="sub" font-size="11">i</tspan>|≤τ<tspan baseline-shift="sub" font-size="11">max</tspan></text>
-  <text x="1138" y="299" text-anchor="middle" class="note">逐腿执行</text>
-  <path d="M1025 262H1080" class="flow"/>
-
-  <rect x="1240" y="180" width="80" height="165" class="box"/>
-  <text x="1280" y="239" text-anchor="middle" class="head">机器人</text>
-  <text x="1280" y="272" text-anchor="middle" class="note">闭环腿</text>
-  <text x="1280" y="298" text-anchor="middle" class="note">轮地接触</text>
-  <path d="M1195 262H1240" class="flow"/>
-
-  <!-- wheel-speed loop -->
-  <rect x="550" y="505" width="240" height="88" class="box"/>
-  <text x="670" y="534" text-anchor="middle" class="head">可选轮速 PI</text>
-  <text x="670" y="566" text-anchor="middle" class="smallmath">v<tspan baseline-shift="sub" font-size="11">x</tspan>*,ω<tspan baseline-shift="sub" font-size="11">yaw</tspan>* → ω<tspan baseline-shift="sub" font-size="11">i</tspan>* → τ<tspan baseline-shift="sub" font-size="11">w,i</tspan></text>
-  <path d="M790 549H1220V315H1240" class="flow"/>
-
-  <!-- feedback -->
-  <path d="M1280 345V630H132V465" class="feedback"/>
-  <path d="M402 630V465" class="feedback"/>
-  <text x="657" y="657" text-anchor="middle" class="note">状态反馈：底盘位姿与速度、IMU、四个髋角与角速度、轮心位置、整车质心</text>
+  <rect width="1440" height="940" fill="#fff"/>
+  <text x="35" y="35" class="head">站立 / 遥控 VMC：误差 → 目标受力 → 电机力矩 → 状态反馈</text>
+  <rect x="35" y="75" width="195" height="80" rx="5" class="input"/>
+  <text x="132" y="108" text-anchor="middle" class="head">高度目标</text>
+  <text x="132" y="137" text-anchor="middle" class="math">h*</text>
+  <rect x="295" y="70" width="210" height="110" rx="5" class="box"/>
+  <text x="400" y="105" text-anchor="middle" class="head">高度 PID</text>
+  <text x="400" y="136" text-anchor="middle" class="text">误差 h* − h，速度 ḣ</text>
+  <text x="400" y="163" text-anchor="middle" class="small">附加推力 F<tspan baseline-shift="sub" font-size="12">PID</tspan>（N）</text>
+  <path d="M230 115H295" class="flow"/>
+  <rect x="295" y="225" width="210" height="70" rx="5" class="box"/>
+  <text x="400" y="253" text-anchor="middle" class="head">重力前馈</text>
+  <text x="400" y="280" text-anchor="middle" class="math">F<tspan baseline-shift="sub" font-size="12">g</tspan> = Mg（N）</text>
+  <circle cx="570" cy="125" r="20" class="box"/>
+  <text x="570" y="132" text-anchor="middle" class="math">+</text>
+  <path d="M505 125H550" class="flow"/>
+  <path d="M505 260H570V145" class="flow"/>
+  <path d="M590 125H650" class="flow"/>
+  <rect x="650" y="70" width="245" height="170" rx="5" class="box"/>
+  <text x="772" y="105" text-anchor="middle" class="head">截断推力，再拼接向量</text>
+  <text x="772" y="144" text-anchor="middle" class="math">F<tspan baseline-shift="sub" font-size="12">z</tspan>* = max(0, F<tspan baseline-shift="sub" font-size="12">g</tspan> + F<tspan baseline-shift="sub" font-size="12">PID</tspan>)</text>
+  <text x="772" y="181" text-anchor="middle" class="math">w* = [F<tspan baseline-shift="sub" font-size="12">z</tspan>*, τ<tspan baseline-shift="sub" font-size="12">x</tspan>*, τ<tspan baseline-shift="sub" font-size="12">y</tspan>*]ᵀ</text>
+  <text x="772" y="215" text-anchor="middle" class="small">分量单位：N、N·m、N·m</text>
+  <rect x="965" y="70" width="235" height="170" rx="5" class="box"/>
+  <text x="1082" y="106" text-anchor="middle" class="head">有界支持力分配</text>
+  <text x="1082" y="143" text-anchor="middle" class="text">枚举边界 → 伪逆候选</text>
+  <text x="1082" y="177" text-anchor="middle" class="text">按加权残差与参考项评分</text>
+  <text x="1082" y="212" text-anchor="middle" class="small">输出四腿目标支持力 f（N）</text>
+  <path d="M895 155H965" class="flow"/>
+  <rect x="650" y="320" width="245" height="100" rx="5" class="box"/>
+  <text x="772" y="351" text-anchor="middle" class="head">roll / pitch PD</text>
+  <text x="772" y="380" text-anchor="middle" class="text">水平目标；偏角与角速度</text>
+  <text x="772" y="406" text-anchor="middle" class="small">恢复力矩 τ<tspan baseline-shift="sub" font-size="12">x</tspan>*、τ<tspan baseline-shift="sub" font-size="12">y</tspan>*（N·m）</text>
+  <path d="M772 320V240" class="flow"/>
+  <rect x="965" y="320" width="235" height="120" rx="5" class="box"/>
+  <text x="1082" y="352" text-anchor="middle" class="head">解析雅可比力矩映射</text>
+  <text x="1082" y="386" text-anchor="middle" class="math">τ<tspan baseline-shift="sub" font-size="12">i</tspan> = −f<tspan baseline-shift="sub" font-size="12">i</tspan> j<tspan baseline-shift="super" font-size="12">W</tspan><tspan baseline-shift="sub" font-size="12">i,z</tspan></text>
+  <text x="1082" y="418" text-anchor="middle" class="small" style="font-size:13px">j<tspan baseline-shift="super" font-size="12">W</tspan><tspan baseline-shift="sub" font-size="12">i,z</tspan>：雅可比的世界竖直分量</text>
+  <path d="M1082 240V320" class="flow"/>
+  <text x="1095" y="282" class="small">目标 f</text>
+  <rect x="1250" y="320" width="150" height="120" rx="5" class="box"/>
+  <text x="1325" y="354" text-anchor="middle" class="head">髋力矩限幅</text>
+  <text x="1325" y="389" text-anchor="middle" class="math">±40 N·m</text>
+  <text x="1325" y="420" text-anchor="middle" class="small">不重新分配</text>
+  <path d="M1200 380H1250" class="flow"/>
+  <rect x="650" y="500" width="245" height="125" rx="5" class="box"/>
+  <text x="772" y="533" text-anchor="middle" class="head">实时几何与坐标变换</text>
+  <text x="772" y="566" text-anchor="middle" class="text">髋角 → FK 轮心、雅可比 J</text>
+  <text x="772" y="601" text-anchor="middle" class="small">姿态、安装位姿、整车质心</text>
+  <path d="M895 535H930V205H965" class="flow"/>
+  <text x="943" y="484" class="small">分配矩阵</text>
+  <path d="M895 590H1082V440" class="flow"/>
+  <text x="1093" y="545" class="small">世界系 J</text>
+  <rect x="1250" y="650" width="150" height="125" rx="5" class="input"/>
+  <text x="1325" y="681" text-anchor="middle" class="head" style="font-size:17px">MuJoCo 机器人</text>
+  <text x="1325" y="714" text-anchor="middle" class="text">刚体与闭环腿</text>
+  <text x="1325" y="744" text-anchor="middle" class="text">重力与接触</text>
+  <path d="M1325 440V650" class="flow"/>
+  <text x="1337" y="575" class="small">髋力矩</text>
+  <rect x="35" y="660" width="195" height="95" rx="5" class="input"/>
+  <text x="132" y="694" text-anchor="middle" class="head">行驶命令</text>
+  <text x="132" y="728" text-anchor="middle" class="math">v<tspan baseline-shift="sub" font-size="12">x</tspan>*、ω<tspan baseline-shift="sub" font-size="12">yaw</tspan>*</text>
+  <rect x="295" y="650" width="275" height="115" rx="5" class="box"/>
+  <text x="432" y="684" text-anchor="middle" class="head">差速目标 → 四轮独立 PI</text>
+  <text x="432" y="718" text-anchor="middle" class="text">轮速误差 ω<tspan baseline-shift="sub" font-size="12">i</tspan>* − ω<tspan baseline-shift="sub" font-size="12">i</tspan></text>
+  <text x="432" y="748" text-anchor="middle" class="small">条件积分与轮力矩限幅</text>
+  <path d="M230 707H295" class="flow"/>
+  <path d="M570 707H1250" class="flow"/>
+  <text x="820" y="693" class="small">轮力矩（普通 VMC 不启用此支路）</text>
+  <path d="M1325 775V850H260" class="bus"/>
+  <path d="M260 850V165H295" class="feedback"/>
+  <text x="269" y="464" class="small">h、ḣ</text>
+  <path d="M615 850V388H650" class="feedback"/>
+  <text x="620" y="467" class="small">姿态</text>
+  <path d="M772 850V625" class="feedback"/>
+  <path d="M432 850V765" class="feedback"/>
+  <text x="445" y="803" class="small">实测轮关节速度</text>
+  <text x="860" y="883" text-anchor="middle" class="text">虚线：仿真状态真值反馈；当前不使用 IMU 融合或接触力反馈</text>
+  <text x="720" y="921" text-anchor="middle" class="small">跨台阶 REAR_CLIMB / EXTEND 用关节位置伺服替换腿部 VMC；轮速支路继续运行。</text>
 </svg>

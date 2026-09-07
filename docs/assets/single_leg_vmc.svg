@@ -13,43 +13,45 @@
   </defs>
   <rect width="1200" height="650" fill="#fff"/>
 
-  <!-- mechanical definition -->
-  <circle cx="205" cy="210" r="6" class="fixed"/>
-  <line x1="205" y1="210" x2="478" y2="210" class="axis-r"/>
-  <line x1="205" y1="210" x2="132" y2="264" class="axis-g"/>
-  <line x1="205" y1="210" x2="205" y2="74" class="axis-b"/>
-  <text x="486" y="218" class="math" fill="#e31a1c">x<tspan baseline-shift="sub" font-size="16">L</tspan></text>
-  <text x="94" y="282" class="math" fill="#00a020">y<tspan baseline-shift="sub" font-size="16">L</tspan></text>
-  <text x="216" y="84" class="math" fill="#0671ce">z<tspan baseline-shift="sub" font-size="16">L</tspan></text>
-
-  <line x1="205" y1="210" x2="286" y2="129" class="link"/>
-  <line x1="205" y1="210" x2="421" y2="349" class="link"/>
-  <line x1="286" y1="129" x2="488" y2="306" class="link"/>
-  <line x1="421" y1="349" x2="488" y2="306" class="link"/>
-  <line x1="421" y1="349" x2="228" y2="530" class="link"/>
-  <circle cx="205" cy="210" r="9" class="fixed"/><circle cx="286" cy="129" r="8" class="joint"/>
-  <circle cx="488" cy="306" r="8" class="joint"/><circle cx="421" cy="349" r="8" class="joint"/>
-  <circle cx="228" cy="530" r="35" class="wheel"/><circle cx="228" cy="530" r="8" class="joint"/>
-
-  <text x="174" y="190" class="math">A</text><text x="294" y="116" class="math">B</text>
-  <text x="500" y="302" class="math">C</text><text x="432" y="374" class="math">D</text><text x="176" y="570" class="math">E</text>
-
-  <path d="M272 210A67 67 0 0 1 260 247" class="arrow"/>
-  <text x="277" y="257" class="math">q, τ</text>
-
-  <line x1="228" y1="530" x2="330" y2="370" class="force"/>
-  <text x="258" y="338" class="math">F<tspan baseline-shift="sub" font-size="16">E</tspan><tspan baseline-shift="super" font-size="16">v</tspan></text>
-  <text x="258" y="365" class="smallmath">[F<tspan baseline-shift="sub" font-size="13">x</tspan><tspan baseline-shift="super" font-size="13">v</tspan>, F<tspan baseline-shift="sub" font-size="13">z</tspan><tspan baseline-shift="super" font-size="13">v</tspan>]ᵀ</text>
-  <path d="M228 530C241 488 244 447 239 411" class="motion"/>
-  <text x="82" y="462" class="smallmath">δE=J<tspan baseline-shift="sub" font-size="13">E</tspan>δq</text>
-  <text x="76" y="610" class="note">一个主动自由度仅能产生轨迹切向虚功</text>
+  <!-- Geometry rendered from DEFAULT_GEOMETRY at q_nominal; x-z plane. -->
+<line x1="200.0000" y1="190.0000" x2="500.0000" y2="190.0000" class="axis-r"/>
+<line x1="200.0000" y1="190.0000" x2="200.0000" y2="55.0000" class="axis-b"/>
+<text x="506" y="198" class="math">x<tspan baseline-shift="sub" font-size="16">L</tspan></text>
+<text x="211" y="67" class="math">z<tspan baseline-shift="sub" font-size="16">L</tspan></text>
+<circle cx="121" cy="244" r="10" fill="white" stroke="#00a020" stroke-width="2"/>
+<path d="M115 238L127 250M115 250L127 238" stroke="#00a020" stroke-width="2"/>
+<text x="79" y="283" class="smallmath">+y_L 入纸面</text>
+<line x1="200.0000" y1="190.0000" x2="280.8467" y2="109.1533" class="link"/>
+<line x1="200.0000" y1="190.0000" x2="391.4345" y2="350.6326" class="link"/>
+<line x1="280.8467" y1="109.1533" x2="437.2244" y2="312.0929" class="link"/>
+<line x1="437.2244" y1="312.0929" x2="202.6518" y2="509.5246" class="link"/>
+<circle cx="202.6518" cy="509.5246" r="68.25" class="wheel"/>
+<circle cx="200.0000" cy="190.0000" r="7" class="fixed"/>
+<text x="173.0000" y="175.0000" class="math">A</text>
+<circle cx="280.8467" cy="109.1533" r="7" class="joint"/>
+<text x="288.8467" y="94.1533" class="math">B</text>
+<circle cx="437.2244" cy="312.0929" r="7" class="joint"/>
+<text x="449.2244" y="304.0929" class="math">C</text>
+<circle cx="391.4345" cy="350.6326" r="7" class="joint"/>
+<text x="403.4345" y="370.6326" class="math">D</text>
+<circle cx="202.6518" cy="509.5246" r="7" class="joint"/>
+<text x="172.6518" y="517.5246" class="math">E</text>
+<path d="M258 190A58 58 0 0 1 244.43 227.28" class="arrow"/>
+<text x="268" y="229" class="smallmath">q = −40°</text>
+<path d="M143 155A67 67 0 0 0 154 238" class="arrow"/>
+<text x="75" y="159" class="smallmath">τ &gt; 0</text>
+<line x1="202.6518" y1="509.5246" x2="332.6518" y2="384.5246" class="force"/>
+<text x="340.6518" y="384.5246" class="math">F<tspan baseline-shift="sub" font-size="16">E</tspan><tspan baseline-shift="super" font-size="16">v</tspan></text>
+<line x1="202.6518" y1="509.5246" x2="207.7046" y2="409.5246" class="motion"/>
+<text x="45" y="404" class="smallmath">δE=J_E δq</text>
+<text x="65" y="615" class="note">一个主动自由度只决定轨迹切向虚功</text>
 
   <!-- analytical derivation -->
   <line x1="575" y1="48" x2="575" y2="608" class="rule"/>
   <text x="620" y="78" class="head">闭环约束的微分运动</text>
   <text x="620" y="118" class="eq">g<tspan baseline-shift="sub" font-size="15">1</tspan>=0,  g<tspan baseline-shift="sub" font-size="15">2</tspan>=0</text>
   <path d="M785 110L846 110" class="arrow"/>
-  <text x="875" y="118" class="eq">J<tspan baseline-shift="sub" font-size="15">E</tspan>=∂E/∂q=[J<tspan baseline-shift="sub" font-size="15">x</tspan>,J<tspan baseline-shift="sub" font-size="15">z</tspan>]ᵀ</text>
+  <text x="857" y="118" class="smallmath">J<tspan baseline-shift="sub" font-size="15">E</tspan>=∂E/∂q=[J<tspan baseline-shift="sub" font-size="15">x</tspan>,J<tspan baseline-shift="sub" font-size="15">z</tspan>]ᵀ</text>
 
   <line x1="620" y1="151" x2="1148" y2="151" class="rule"/>
   <text x="620" y="188" class="head">虚功相等</text>
@@ -68,6 +70,6 @@
   <text x="620" y="486" class="note">法向零空间力不产生主动关节虚功，不能由单个 τ 唯一确定。</text>
 
   <line x1="620" y1="520" x2="1148" y2="520" class="rule"/>
-  <text x="620" y="558" class="head">竖直支持力的静力平衡</text>
+  <text x="620" y="558" class="head">水平机体：竖直支持力的静力平衡</text>
   <text x="620" y="600" class="math">τ=−J<tspan baseline-shift="sub" font-size="16">z</tspan>f　⇔　f=−τ/J<tspan baseline-shift="sub" font-size="16">z</tspan>,　J<tspan baseline-shift="sub" font-size="16">z</tspan>≠0</text>
 </svg>
